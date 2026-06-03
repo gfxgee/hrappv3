@@ -1,0 +1,180 @@
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enum\UserStatus;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
+use Filament\Models\Contracts\HasAvatar;
+use Laravel\Fortify\Contracts\PasskeyUser;
+use Laravel\Fortify\PasskeyAuthenticatable;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+use Spatie\Permission\Traits\HasRoles;
+
+#[Fillable([
+    'display_name', 'name', 'first_name', 'last_name', 'middle_name', 'suffix_name',
+    'email', 'personal_email', 'password', 'photo', 'sex', 'status', 'active',
+    'bio_metric_id', 'birthday', 'date_hired', 'regular_date', 'phone', 'civil_status',
+    'employment_status', 'department_id', 'job_title', 'sss', 'phic', 'hdmf_tin',
+    'job_description', 'permanent_address', 'emergency_contact',
+])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+class User extends Authenticatable implements HasAvatar, PasskeyUser
+{
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /**
+     * The model's default attribute values.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'status' => UserStatus::ACTIVE->value,
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'two_factor_confirmed_at' => 'datetime',
+            'emergency_contact' => 'array',
+        ];
+    }
+
+    /**
+     * Scope to employees whose status is active.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<User>  $query
+     */
+    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->where('status', UserStatus::ACTIVE->value);
+    }
+
+    /**
+     * The avatar URL used by Filament (user menu, account widget).
+     */
+    public function getFilamentAvatarUrl(): ?string
+    {
+        if (blank($this->photo)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->photo);
+    }
+
+    /**
+     * Praises this user has sent.
+     *
+     * @return HasMany<Praise, $this>
+     */
+    public function praisesSent(): HasMany
+    {
+        return $this->hasMany(Praise::class, 'user_id');
+    }
+
+    /**
+     * Praises this user has received.
+     *
+     * @return HasMany<Praise, $this>
+     */
+    public function praisesReceived(): HasMany
+    {
+        return $this->hasMany(Praise::class, 'recipient_id');
+    }
+
+    /**
+     * @return HasMany<PraiseReaction, $this>
+     */
+    public function praiseReactions(): HasMany
+    {
+        return $this->hasMany(PraiseReaction::class);
+    }
+
+    /**
+     * @return HasMany<PraiseComment, $this>
+     */
+    public function praiseComments(): HasMany
+    {
+        return $this->hasMany(PraiseComment::class);
+    }
+
+    /**
+     * @return HasMany<LeaveRequest, $this>
+     */
+    public function leaveRequests(): HasMany
+    {
+        return $this->hasMany(LeaveRequest::class);
+    }
+
+    /**
+     * @return HasMany<OverTimeRequest, $this>
+     */
+    public function overTimeRequests(): HasMany
+    {
+        return $this->hasMany(OverTimeRequest::class);
+    }
+
+    /**
+     * The department this employee belongs to.
+     *
+     * @return BelongsTo<Department, $this>
+     */
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Departments this user leads.
+     *
+     * @return BelongsToMany<Department, $this>
+     */
+    public function ledDepartments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class, 'team_leaders')->withTimestamps();
+    }
+
+    /**
+     * Whether the user leads any department.
+     */
+    public function isTeamLeader(): bool
+    {
+        return $this->ledDepartments()->exists();
+    }
+
+    /**
+     * The user's leave balances and work schedule.
+     *
+     * @return HasOne<UserData, $this>
+     */
+    public function userData(): HasOne
+    {
+        return $this->hasOne(UserData::class);
+    }
+
+    /**
+     * @return HasMany<AttendanceLog, $this>
+     */
+    public function attendanceLogs(): HasMany
+    {
+        return $this->hasMany(AttendanceLog::class);
+    }
+}

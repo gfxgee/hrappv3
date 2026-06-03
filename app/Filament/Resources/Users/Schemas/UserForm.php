@@ -1,0 +1,150 @@
+<?php
+
+namespace App\Filament\Resources\Users\Schemas;
+
+use App\Filament\Support\TimeSelect;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+
+class UserForm
+{
+    public static function configure(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Section::make('Personal Information')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('display_name'),
+                        TextInput::make('name')
+                            ->required(),
+                        TextInput::make('first_name'),
+                        TextInput::make('last_name'),
+                        TextInput::make('middle_name'),
+                        TextInput::make('suffix_name'),
+                        Select::make('sex')
+                            ->options(['male' => 'Male', 'female' => 'Female']),
+                        DatePicker::make('birthday'),
+                        Select::make('civil_status')
+                            ->options([
+                                'single' => 'Single',
+                                'married' => 'Married',
+                                'widowed' => 'Widowed',
+                                'divorced' => 'Divorced',
+                            ]),
+                        TextInput::make('phone')
+                            ->tel(),
+                        Textarea::make('permanent_address')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Account')
+                    ->columns(2)
+                    ->schema([
+                        FileUpload::make('photo')
+                            ->avatar()
+                            ->image()
+                            ->disk('public')
+                            ->directory('avatar')
+                            ->visibility('public')
+                            ->imageEditor()
+                            ->columnSpanFull(),
+                        TextInput::make('email')
+                            ->label('Email address')
+                            ->email()
+                            ->required()
+                            ->unique(ignoreRecord: true),
+                        TextInput::make('personal_email')
+                            ->email()
+                            ->unique(ignoreRecord: true),
+                        TextInput::make('password')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(255)
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->dehydrated(fn (?string $state): bool => filled($state))
+                            ->helperText('Leave blank to keep the current password.'),
+                        Select::make('status')
+                            ->options(['active' => 'Active', 'inactive' => 'Inactive'])
+                            ->required(),
+                        Toggle::make('active'),
+                    ]),
+
+                Section::make('Employment')
+                    ->columns(2)
+                    ->schema([
+                        Select::make('department_id')
+                            ->label('Department')
+                            ->relationship('department', 'name')
+                            ->searchable()
+                            ->preload(),
+                        TextInput::make('job_title'),
+                        TextInput::make('employment_status'),
+                        TextInput::make('bio_metric_id')
+                            ->numeric(),
+                        DatePicker::make('date_hired'),
+                        DatePicker::make('regular_date'),
+                        Textarea::make('job_description')
+                            ->columnSpanFull(),
+                    ]),
+
+                Section::make('Government IDs')
+                    ->columns(1)
+                    ->schema([
+                        TextInput::make('sss')
+                            ->label('SSS'),
+                        TextInput::make('phic')
+                            ->label('PhilHealth'),
+                        TextInput::make('hdmf_tin')
+                            ->label('HDMF / TIN'),
+                    ]),
+
+                Section::make('Leave Balances & Schedule')
+                    ->description('Stored in the related user_data record.')
+                    ->relationship('userData')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('vacation_leave')
+                            ->numeric()
+                            ->default(0),
+                        TextInput::make('sick_leave')
+                            ->numeric()
+                            ->default(0),
+                        TextInput::make('emergency_leave')
+                            ->numeric()
+                            ->default(0),
+                        TextInput::make('bereavement_leave')
+                            ->numeric()
+                            ->default(0),
+                        TextInput::make('maternity_leave')
+                            ->numeric()
+                            ->default(0),
+                        TextInput::make('paternity_leave')
+                            ->numeric()
+                            ->default(0),
+                        TimeSelect::make('time_in', '10:00'),
+                        TimeSelect::make('time_out', '18:00'),
+                    ]),
+
+                Section::make('Other')
+                    ->collapsed(false)
+                    ->schema([
+                        KeyValue::make('emergency_contact')
+                            ->keyLabel('name')
+                            ->keyPlaceholder('eg. Donila Artego')
+                            ->valueLabel('phone number')
+                            ->valuePlaceholder('093569143420')
+                            ->addActionLabel('Add contact')
+                            ->columns(2)
+                            ->columnSpan(2),
+                    ]),
+            ]);
+    }
+}
