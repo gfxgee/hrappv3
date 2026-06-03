@@ -3,9 +3,9 @@
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
 use App\Filament\Pages\FileLeaveRequest;
+use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveRequests\Pages\EditLeaveRequest;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
-use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
@@ -37,6 +37,17 @@ it('denies regular users access to the leave request resource', function () {
     $this->actingAs(User::factory()->create());
 
     expect(LeaveRequestResource::canAccess())->toBeFalse();
+});
+
+it('badges the count of pending leave requests', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    expect(LeaveRequestResource::getNavigationBadge())->toBeNull();
+
+    LeaveRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+    LeaveRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    expect(LeaveRequestResource::getNavigationBadge())->toBe('2');
 });
 
 it('renders the leave request list for a manager', function () {

@@ -2,6 +2,7 @@
 
 use App\Filament\Pages\PraiseWall;
 use App\Filament\Resources\Badges\BadgeResource;
+use App\Filament\Resources\Badges\Pages\CreateBadge;
 use App\Filament\Resources\Badges\Pages\ListBadges;
 use App\Filament\Resources\PraiseSessions\PraiseSessionResource;
 use App\Models\Badge;
@@ -10,6 +11,7 @@ use App\Models\PraiseComment;
 use App\Models\PraiseReaction;
 use App\Models\PraiseSession;
 use App\Models\User;
+use Database\Seeders\BadgeSeeder;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -46,12 +48,12 @@ it('keeps only one praise session active at a time', function () {
 });
 
 it('seeds the badge catalogue idempotently', function () {
-    $this->seed(Database\Seeders\BadgeSeeder::class);
+    $this->seed(BadgeSeeder::class);
     expect(Badge::count())->toBe(14)
         ->and(Badge::where('label', 'Smooth Operator')->where('icon', '🎯')->exists())->toBeTrue();
 
     // Running again updates rather than duplicating.
-    $this->seed(Database\Seeders\BadgeSeeder::class);
+    $this->seed(BadgeSeeder::class);
     expect(Badge::count())->toBe(14);
 });
 
@@ -86,6 +88,17 @@ it('renders the praise wall', function () {
     $this->actingAs(praiseUser());
 
     Livewire::test(PraiseWall::class)->assertSuccessful();
+});
+
+it('badges the praise count for the current cycle', function () {
+    $cycle = PraiseSession::create(['name' => 'Now', 'is_active' => true]);
+    Praise::factory()->count(2)->create(['praise_session_id' => $cycle->id]);
+
+    // A praise in a different (archived) cycle should not count.
+    $old = PraiseSession::create(['name' => 'Old', 'is_active' => false]);
+    Praise::factory()->create(['praise_session_id' => $old->id]);
+
+    expect(PraiseWall::getNavigationBadge())->toBe('2');
 });
 
 it('posts a praise to a teammate, tagging the active session', function () {
@@ -217,7 +230,7 @@ it('renders and creates badges for a manager', function () {
 
     Livewire::test(ListBadges::class)->assertSuccessful();
 
-    Livewire::test(App\Filament\Resources\Badges\Pages\CreateBadge::class)
+    Livewire::test(CreateBadge::class)
         ->fillForm([
             'label' => 'Code Wizard',
             'color' => 'success',

@@ -29,6 +29,11 @@ class UserResource extends Resource
     // Access is governed by App\Policies\UserPolicy: everyone may view,
     // only users with an assigned role may create/edit/delete.
 
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) User::count();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return UserForm::configure($schema);

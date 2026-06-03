@@ -37,6 +37,17 @@ it('denies regular users access to the overtime resource', function () {
     expect(OverTimeRequestResource::canAccess())->toBeFalse();
 });
 
+it('badges the count of pending overtime requests', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    expect(OverTimeRequestResource::getNavigationBadge())->toBeNull();
+
+    OverTimeRequest::factory()->count(3)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+    OverTimeRequest::factory()->approved()->create();
+
+    expect(OverTimeRequestResource::getNavigationBadge())->toBe('3');
+});
+
 it('renders the overtime list for a manager', function () {
     $this->actingAs(overtimeManager('hr'));
 

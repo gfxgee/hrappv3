@@ -27,6 +27,12 @@ it('renders the list page', function () {
     Livewire::test(ListUsers::class)->assertSuccessful();
 });
 
+it('shows the total user count as a navigation badge', function () {
+    User::factory()->count(3)->create();
+
+    expect(UserResource::getNavigationBadge())->toBe((string) User::count());
+});
+
 it('gives a user with no roles view-only access', function () {
     $viewer = User::factory()->create();
     $this->actingAs($viewer);

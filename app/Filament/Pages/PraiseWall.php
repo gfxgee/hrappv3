@@ -12,8 +12,8 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -33,6 +33,20 @@ class PraiseWall extends Page
 
     /** @var list<string> */
     protected const CYCLE_MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+
+    /**
+     * Praise count for the current cycle (or the uncategorized wall).
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $current = PraiseSession::current();
+
+        $count = $current !== null
+            ? Praise::where('praise_session_id', $current->id)->count()
+            : Praise::whereNull('praise_session_id')->count();
+
+        return (string) $count;
+    }
 
     public function getSubheading(): ?string
     {

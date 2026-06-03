@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\LeaveRequests;
 
+use App\Enum\AttendanceStatus;
+use App\Filament\Concerns\ScopesToLedDepartments;
 use App\Filament\Resources\LeaveRequests\Pages\CreateLeaveRequest;
 use App\Filament\Resources\LeaveRequests\Pages\EditLeaveRequest;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
@@ -10,18 +12,35 @@ use App\Filament\Resources\LeaveRequests\Tables\LeaveRequestsTable;
 use App\Models\LeaveRequest;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Illuminate\Database\Eloquent\Model;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class LeaveRequestResource extends Resource
 {
-    use \App\Filament\Concerns\ScopesToLedDepartments;
+    use ScopesToLedDepartments;
 
     protected static ?string $model = LeaveRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
+
+    /**
+     * Number of requests awaiting approval (scoped to what this user manages).
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getEloquentQuery()
+            ->where('status', AttendanceStatus::FOR_APPROVAL->value)
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     /**
      * The `request_type` column is cast to an enum, so we override the title

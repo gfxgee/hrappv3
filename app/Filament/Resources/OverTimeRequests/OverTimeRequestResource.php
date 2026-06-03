@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\OverTimeRequests;
 
+use App\Enum\AttendanceStatus;
+use App\Filament\Concerns\ScopesToLedDepartments;
 use App\Filament\Resources\OverTimeRequests\Pages\CreateOverTimeRequest;
 use App\Filament\Resources\OverTimeRequests\Pages\EditOverTimeRequest;
 use App\Filament\Resources\OverTimeRequests\Pages\ListOverTimeRequests;
@@ -17,13 +19,30 @@ use Illuminate\Database\Eloquent\Model;
 
 class OverTimeRequestResource extends Resource
 {
-    use \App\Filament\Concerns\ScopesToLedDepartments;
+    use ScopesToLedDepartments;
 
     protected static ?string $model = OverTimeRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 
     protected static ?string $navigationLabel = 'Overtime Requests';
+
+    /**
+     * Number of overtime requests awaiting approval (scoped to what this user manages).
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getEloquentQuery()
+            ->where('status', AttendanceStatus::FOR_APPROVAL->value)
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
+    }
 
     /**
      * Roles permitted to manage overtime requests.
