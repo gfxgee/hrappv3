@@ -5,12 +5,15 @@ namespace App\Filament\Resources\OverTimeRequests\Tables;
 use App\Enum\AttendanceStatus;
 use App\Models\OverTimeRequest;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
 
 class OverTimeRequestsTable
 {
@@ -74,9 +77,50 @@ class OverTimeRequestsTable
                 EditAction::make(),
             ])
             ->toolbarActions([
+                BulkAction::make('approveSelected')
+                    ->label('Approve')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->deselectRecordsAfterCompletion()
+                    ->action(fn (Collection $records) => self::decideMany($records, AttendanceStatus::APPROVED)),
+                BulkAction::make('rejectSelected')
+                    ->label('Reject')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->deselectRecordsAfterCompletion()
+                    ->action(fn (Collection $records) => self::decideMany($records, AttendanceStatus::REJECTED)),
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Apply an approval decision to every still-pending record in the selection,
+     * leaving already-decided ones untouched. Approving stamps the approved date.
+     *
+     * @param  Collection<int, OverTimeRequest>  $records
+     */
+    protected static function decideMany(Collection $records, AttendanceStatus $status): void
+    {
+        $pending = $records->filter(
+            fn (OverTimeRequest $record): bool => $record->status === AttendanceStatus::FOR_APPROVAL,
+        );
+
+        $pending->each(fn (OverTimeRequest $record) => $record->update([
+            'status' => $status->value,
+            'approved_date' => $status === AttendanceStatus::APPROVED ? now() : null,
+        ]));
+
+        $verb = $status === AttendanceStatus::APPROVED ? 'approved' : 'rejected';
+        $skipped = $records->count() - $pending->count();
+
+        Notification::make()
+            ->success()
+            ->title("{$pending->count()} request(s) {$verb}")
+            ->body($skipped > 0 ? "{$skipped} already decided and skipped." : null)
+            ->send();
     }
 }

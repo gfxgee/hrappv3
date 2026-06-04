@@ -64,6 +64,32 @@ it('renders the overtime edit page', function () {
     expect(OverTimeRequestResource::getRecordTitle($ot))->toBeString();
 });
 
+it('bulk-approves selected pending overtime requests and stamps the date', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $pending = OverTimeRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->callTableBulkAction('approveSelected', $pending);
+
+    $pending->each(function ($ot) {
+        $ot->refresh();
+        expect($ot->status)->toBe(AttendanceStatus::APPROVED)
+            ->and($ot->approved_date)->not->toBeNull();
+    });
+});
+
+it('bulk-rejects selected pending overtime requests', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $pending = OverTimeRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->callTableBulkAction('rejectSelected', $pending);
+
+    $pending->each(fn ($ot) => expect($ot->refresh()->status)->toBe(AttendanceStatus::REJECTED));
+});
+
 it('approves an overtime request and stamps the approved date', function () {
     $this->actingAs(overtimeManager('hr'));
     $ot = OverTimeRequest::factory()->create([

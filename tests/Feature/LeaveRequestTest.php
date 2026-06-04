@@ -66,6 +66,31 @@ it('renders the leave request edit page', function () {
     expect(LeaveRequestResource::getRecordTitle($leave))->toBeString();
 });
 
+it('bulk-approves selected pending leave requests, skipping decided ones', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $pending = LeaveRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+    $alreadyApproved = LeaveRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->callTableBulkAction('approveSelected', $pending->push($alreadyApproved));
+
+    expect($pending[0]->refresh()->status)->toBe(AttendanceStatus::APPROVED)
+        ->and($pending[1]->refresh()->status)->toBe(AttendanceStatus::APPROVED)
+        ->and($alreadyApproved->refresh()->status)->toBe(AttendanceStatus::APPROVED);
+});
+
+it('bulk-rejects selected pending leave requests', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $pending = LeaveRequest::factory()->count(3)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->callTableBulkAction('rejectSelected', $pending);
+
+    $pending->each(fn ($leave) => expect($leave->refresh()->status)->toBe(AttendanceStatus::REJECTED));
+});
+
 it('approves a leave request from the resource table', function () {
     $this->actingAs(userWithRole('hr'));
     $leave = LeaveRequest::factory()->create();
