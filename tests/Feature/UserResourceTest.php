@@ -6,6 +6,7 @@ use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\RelationManagers\AttendanceLogsRelationManager;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\AttendanceLog;
+use App\Models\LeaveRequest;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
@@ -25,6 +26,30 @@ beforeEach(function () {
 
 it('renders the list page', function () {
     Livewire::test(ListUsers::class)->assertSuccessful();
+});
+
+it('lets active employees access the panel but blocks inactive ones', function () {
+    $panel = Filament::getPanel('admin');
+    $active = User::factory()->create(['status' => 'active']);
+    $inactive = User::factory()->create(['status' => 'inactive']);
+
+    expect($active->canAccessPanel($panel))->toBeTrue()
+        ->and($inactive->canAccessPanel($panel))->toBeFalse();
+});
+
+it('soft-deletes a user and preserves their records', function () {
+    $user = User::factory()->create();
+    $leave = LeaveRequest::factory()->for($user)->create();
+
+    $user->delete();
+
+    expect(User::find($user->id))->toBeNull()                 // hidden from normal queries
+        ->and(User::withTrashed()->find($user->id)?->trashed())->toBeTrue()
+        ->and(LeaveRequest::find($leave->id))->not->toBeNull(); // history survives
+});
+
+it('blocks force-deleting (hard delete) a user', function () {
+    expect(UserResource::canForceDelete(User::factory()->create()))->toBeFalse();
 });
 
 it('shows the total user count as a navigation badge', function () {

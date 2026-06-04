@@ -67,14 +67,15 @@ it('excludes inactive badges from the active scope', function () {
         ->and($ids)->not->toContain($inactive->id);
 });
 
-it('keeps a praise when its sender is deleted', function () {
+it('keeps a praise when its sender is deactivated (soft-deleted)', function () {
     $sender = User::factory()->create();
     $praise = Praise::factory()->create(['user_id' => $sender->id]);
 
-    $sender->delete();
+    $sender->delete(); // soft delete
 
     $praise->refresh();
-    expect($praise->user_id)->toBeNull()
+    expect(Praise::whereKey($praise->id)->exists())->toBeTrue() // praise survives
+        ->and($praise->sender)->toBeNull()                       // soft-deleted sender excluded
         ->and($praise->senderName())->toBe('A former colleague');
 });
 
