@@ -43,6 +43,14 @@ class UserForm
                             ->tel(),
                         Textarea::make('permanent_address')
                             ->columnSpanFull(),
+                        KeyValue::make('emergency_contact')
+                            ->keyLabel('name')
+                            ->keyPlaceholder('eg. Donila Artego')
+                            ->valueLabel('phone number')
+                            ->valuePlaceholder('093569143420')
+                            ->addActionLabel('Add contact')
+                            ->columns(2)
+                            ->columnSpan(2),
                     ]),
 
                 Section::make('Account')
@@ -85,6 +93,14 @@ class UserForm
                             ->relationship('department', 'name')
                             ->searchable()
                             ->preload(),
+                        Select::make('ledDepartments')
+                            ->label('Team leader of')
+                            ->relationship('ledDepartments', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->helperText('Leading a department makes this employee a team leader who can approve that team\'s requests. No separate role needed.')
+                            ->visible(fn (): bool => auth()->user()?->hasAnyRole(['superadmin', 'super_admin', 'hr']) ?? false),
                         TextInput::make('job_title'),
                         TextInput::make('employment_status'),
                         TextInput::make('bio_metric_id')
@@ -133,17 +149,16 @@ class UserForm
                         TimeSelect::make('time_out', '18:00'),
                     ]),
 
-                Section::make('Other')
-                    ->collapsed(false)
+                Section::make('Roles & Access')
+                    ->description('Controls what this employee can manage in the panel.')
+                    ->visible(fn (): bool => auth()->user()?->isSuperAdmin() ?? false)
                     ->schema([
-                        KeyValue::make('emergency_contact')
-                            ->keyLabel('name')
-                            ->keyPlaceholder('eg. Donila Artego')
-                            ->valueLabel('phone number')
-                            ->valuePlaceholder('093569143420')
-                            ->addActionLabel('Add contact')
-                            ->columns(2)
-                            ->columnSpan(2),
+                        Select::make('roles')
+                            ->relationship('roles', 'name')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->helperText('Assign one or more roles. Only super-admins can change this.'),
                     ]),
             ]);
     }

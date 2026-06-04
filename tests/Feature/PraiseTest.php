@@ -13,6 +13,7 @@ use App\Models\PraiseSession;
 use App\Models\User;
 use Database\Seeders\BadgeSeeder;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 
@@ -197,12 +198,244 @@ it('adds a comment to a praise', function () {
     $praise = Praise::factory()->create();
 
     Livewire::test(PraiseWall::class)
-        ->callAction('viewPraise', data: ['comment' => 'Well deserved!'], arguments: ['praise' => $praise->id]);
+        ->set('newComment', 'Well deserved!')
+        ->call('postComment', $praise->id);
 
     expect(PraiseComment::where('praise_id', $praise->id)
         ->where('user_id', $me->id)
         ->where('comment', 'Well deserved!')
         ->exists())->toBeTrue();
+});
+
+it('keeps the praise modal open after posting a comment', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+
+    Livewire::test(PraiseWall::class)
+        ->mountAction('viewPraise', ['praise' => $praise->id])
+        ->assertActionMounted('viewPraise')
+        ->set('newComment', 'Nice work')
+        ->call('postComment', $praise->id)
+        ->assertActionMounted('viewPraise')
+        ->assertSet('newComment', '');
+
+    expect(PraiseComment::where('praise_id', $praise->id)->where('comment', 'Nice work')->exists())->toBeTrue();
+});
+
+it('lets a user edit their own comment', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+    $comment = PraiseComment::create([
+        'praise_id' => $praise->id,
+        'user_id' => $me->id,
+        'comment' => 'original',
+    ]);
+
+    Livewire::test(PraiseWall::class)
+        ->call('editComment', $comment->id)
+        ->assertSet('editingCommentId', $comment->id)
+        ->set('editingCommentText', 'updated text')
+        ->call('updateComment', $comment->id)
+        ->assertSet('editingCommentId', null);
+
+    expect($comment->refresh()->comment)->toBe('updated text');
+});
+
+it('lets a user delete their own comment', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+    $comment = PraiseComment::create([
+        'praise_id' => $praise->id,
+        'user_id' => $me->id,
+        'comment' => 'bye',
+    ]);
+
+    Livewire::test(PraiseWall::class)->call('deleteComment', $comment->id);
+
+    expect(PraiseComment::find($comment->id))->toBeNull();
+});
+
+it('does not let a user edit or delete another user\'s comment', function () {
+    $me = praiseUser();
+    $other = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+    $comment = PraiseComment::create([
+        'praise_id' => $praise->id,
+        'user_id' => $other->id,
+        'comment' => 'theirs',
+    ]);
+
+    Livewire::test(PraiseWall::class)
+        ->call('editComment', $comment->id)
+        ->assertSet('editingCommentId', null)
+        ->call('deleteComment', $comment->id);
+
+    expect($comment->refresh()->comment)->toBe('theirs')
+        ->and(PraiseComment::find($comment->id))->not->toBeNull();
+});
+
+/*
+|--------------------------------------------------------------------------
+| GIF comments
+|--------------------------------------------------------------------------
+*/
+
+function fakeGiphy(): void
+{
+    config()->set('services.gif.provider', 'giphy');
+    config()->set('services.gif.giphy_key', 'test-key');
+
+    Http::fake([
+        'api.giphy.com/*' => Http::response([
+            'data' => [
+                [
+                    'id' => 'abc123',
+                    'images' => [
+                        'fixed_width_small' => ['url' => 'https://media.giphy.com/abc123/preview.gif'],
+                        'fixed_height' => ['url' => 'https://media.giphy.com/abc123/full.gif'],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+}
+
+/**
+ * Fake Giphy that returns a full page (12) of unique GIFs per offset,
+ * so infinite scroll can be exercised.
+ */
+function fakeGiphyPaged(): void
+{
+    config()->set('services.gif.provider', 'giphy');
+    config()->set('services.gif.giphy_key', 'test-key');
+
+    Http::fake(function ($request) {
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $params);
+        $offset = (int) ($params['offset'] ?? 0);
+
+        $data = collect(range(0, 11))->map(fn (int $i): array => [
+            'id' => 'gif-'.($offset + $i),
+            'images' => [
+                'fixed_width_small' => ['url' => "https://media.giphy.com/{$offset}-{$i}/preview.gif"],
+                'fixed_height' => ['url' => "https://media.giphy.com/{$offset}-{$i}/full.gif"],
+            ],
+        ])->all();
+
+        return Http::response(['data' => $data]);
+    });
+}
+
+it('loads more GIFs on demand for infinite scroll', function () {
+    fakeGiphyPaged();
+    $this->actingAs(praiseUser());
+
+    $component = Livewire::test(PraiseWall::class)
+        ->set('gifQuery', 'cats')
+        ->assertSet('gifHasMore', true);
+
+    expect($component->get('gifResults'))->toHaveCount(12);
+
+    $component->call('loadMoreGifs');
+
+    expect($component->get('gifResults'))->toHaveCount(24)
+        ->and($component->get('gifOffset'))->toBe(24);
+});
+
+it('searches GIFs and normalises the provider results', function () {
+    fakeGiphy();
+    $this->actingAs(praiseUser());
+
+    Livewire::test(PraiseWall::class)
+        ->set('gifQuery', 'celebrate')
+        ->assertSet('gifResults', [[
+            'id' => 'abc123',
+            'preview' => 'https://media.giphy.com/abc123/preview.gif',
+            'full' => 'https://media.giphy.com/abc123/full.gif',
+        ]]);
+});
+
+it('does not search for queries shorter than two characters', function () {
+    fakeGiphy();
+    $this->actingAs(praiseUser());
+
+    Livewire::test(PraiseWall::class)
+        ->set('gifQuery', 'a')
+        ->assertSet('gifResults', []);
+
+    Http::assertNothingSent();
+});
+
+it('returns no results when no API key is configured', function () {
+    config()->set('services.gif.provider', 'giphy');
+    config()->set('services.gif.giphy_key', null);
+    Http::fake();
+    $this->actingAs(praiseUser());
+
+    Livewire::test(PraiseWall::class)
+        ->set('gifQuery', 'celebrate')
+        ->assertSet('gifResults', []);
+
+    Http::assertNothingSent();
+});
+
+it('attaches a selected GIF to a comment', function () {
+    fakeGiphy();
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+
+    Livewire::test(PraiseWall::class)
+        ->set('newComment', 'You rock!')
+        ->set('gifQuery', 'celebrate')
+        ->call('selectGif', 'https://media.giphy.com/abc123/full.gif')
+        ->call('postComment', $praise->id);
+
+    $comment = PraiseComment::where('praise_id', $praise->id)->firstOrFail();
+
+    expect($comment->comment)->toBe('You rock!')
+        ->and($comment->gif_url)->toBe('https://media.giphy.com/abc123/full.gif');
+});
+
+it('allows a GIF-only comment with no text', function () {
+    fakeGiphy();
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+
+    Livewire::test(PraiseWall::class)
+        ->set('gifQuery', 'celebrate')
+        ->call('selectGif', 'https://media.giphy.com/abc123/full.gif')
+        ->call('postComment', $praise->id);
+
+    $comment = PraiseComment::where('praise_id', $praise->id)->firstOrFail();
+
+    expect($comment->comment)->toBeNull()
+        ->and($comment->gif_url)->toBe('https://media.giphy.com/abc123/full.gif');
+});
+
+it('does not create a comment with neither text nor a GIF', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+
+    Livewire::test(PraiseWall::class)
+        ->call('postComment', $praise->id);
+
+    expect(PraiseComment::where('praise_id', $praise->id)->count())->toBe(0);
+});
+
+it('ignores a GIF url that is not among the search results', function () {
+    fakeGiphy();
+    $this->actingAs(praiseUser());
+
+    Livewire::test(PraiseWall::class)
+        ->set('gifQuery', 'celebrate')
+        ->call('selectGif', 'https://evil.example.com/not-a-result.gif')
+        ->assertSet('selectedGifUrl', null);
 });
 
 /*

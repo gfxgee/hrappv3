@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'gif' => [
+        // Which GIF search provider to use: "giphy" or "tenor".
+        'provider' => env('GIF_PROVIDER', 'giphy'),
+        'giphy_key' => env('GIPHY_API_KEY'),
+        'tenor_key' => env('TENOR_API_KEY'),
+        'rating' => env('GIF_RATING', 'pg'),
+    ],
+
 ];

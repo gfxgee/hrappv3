@@ -175,6 +175,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     }
 
     /**
+     * Whether the user holds a super-admin role (full, unrestricted access).
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasAnyRole(['superadmin', 'super_admin']);
+    }
+
+    /**
      * The user's leave balances and work schedule.
      *
      * @return HasOne<UserData, $this>

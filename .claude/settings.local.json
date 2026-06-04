@@ -13,7 +13,9 @@
       "Bash(echo \"exit: $?\")",
       "Bash(tee -a .env.example)",
       "PowerShell(php artisan tinker --execute \"$u = App\\\\Models\\\\User::find\\(2\\); auth\\(\\)->login\\($u\\); $cr = collect\\(\\(new App\\\\Filament\\\\Pages\\\\FileLeaveRequest\\(\\)\\)->getLeaveCredits\\(\\)\\)->keyBy\\('label'\\); echo json_encode\\(['vacation' => $cr['Vacation Leave'] ?? null], JSON_PRETTY_PRINT\\);\")",
-      "Bash(grep -rn \"Enum\\\\\\\\\\\\\\\\Department\\\\|App\\\\\\\\\\\\\\\\Enum\\\\\\\\\\\\\\\\Department\\\\|Department::\" app/ database/)"
+      "Bash(grep -rn \"Enum\\\\\\\\\\\\\\\\Department\\\\|App\\\\\\\\\\\\\\\\Enum\\\\\\\\\\\\\\\\Department\\\\|Department::\" app/ database/)",
+      "PowerShell(php artisan migrate --no-interaction 2>&1)",
+      "WebSearch"
     ]
   }
 }

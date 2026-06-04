@@ -5,6 +5,7 @@ use App\Filament\Pages\FileOverTimeRequest;
 use App\Filament\Resources\OverTimeRequests\OverTimeRequestResource;
 use App\Filament\Resources\OverTimeRequests\Pages\EditOverTimeRequest;
 use App\Filament\Resources\OverTimeRequests\Pages\ListOverTimeRequests;
+use App\Models\Department;
 use App\Models\OverTimeRequest;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -29,7 +30,15 @@ it('allows manager roles to access the overtime resource', function (string $rol
     $this->actingAs(overtimeManager($role));
 
     expect(OverTimeRequestResource::canAccess())->toBeTrue();
-})->with(['superadmin', 'super_admin', 'hr', 'teamleader']);
+})->with(['superadmin', 'super_admin', 'hr']);
+
+it('allows a department leader to access the overtime resource without a manager role', function () {
+    $leader = User::factory()->create();
+    $leader->ledDepartments()->attach(Department::factory()->create());
+    $this->actingAs($leader);
+
+    expect(OverTimeRequestResource::canAccess())->toBeTrue();
+});
 
 it('denies regular users access to the overtime resource', function () {
     $this->actingAs(User::factory()->create());

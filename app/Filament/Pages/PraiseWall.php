@@ -9,6 +9,8 @@ use App\Models\PraiseComment;
 use App\Models\PraiseReaction;
 use App\Models\PraiseSession;
 use App\Models\User;
+use App\Services\GifSearch;
+use App\Services\ReasonEnhancer;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -18,6 +20,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class PraiseWall extends Page
 {
@@ -33,6 +36,53 @@ class PraiseWall extends Page
 
     /** @var list<string> */
     protected const CYCLE_MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+
+    /**
+     * How many GIFs to fetch per page (used for infinite scroll).
+     */
+    public const GIF_PER_PAGE = 12;
+
+    /**
+     * Draft text for the comment composer in the open praise modal.
+     */
+    public string $newComment = '';
+
+    /**
+     * The comment currently being edited inline, if any.
+     */
+    public ?int $editingCommentId = null;
+
+    /**
+     * Draft text while editing an existing comment.
+     */
+    public string $editingCommentText = '';
+
+    /**
+     * Current GIF search query in the comment picker.
+     */
+    public string $gifQuery = '';
+
+    /**
+     * Results of the latest GIF search (accumulated across pages).
+     *
+     * @var list<array{id: string, preview: string, full: string}>
+     */
+    public array $gifResults = [];
+
+    /**
+     * Offset of the next GIF page to fetch.
+     */
+    public int $gifOffset = 0;
+
+    /**
+     * Whether more GIF results are likely available for the current query.
+     */
+    public bool $gifHasMore = false;
+
+    /**
+     * The GIF the user has picked to attach to their comment, if any.
+     */
+    public ?string $selectedGifUrl = null;
 
     /**
      * Praise count for the current cycle (or the uncategorized wall).
@@ -221,8 +271,218 @@ class PraiseWall extends Page
     }
 
     /**
+     * Live-search GIFs as the query in the comment picker changes.
+     */
+    public function updatedGifQuery(): void
+    {
+        $this->searchGifs();
+    }
+
+    /**
+     * Run a fresh GIF search for the current query (min. 2 characters),
+     * replacing any previous results.
+     */
+    public function searchGifs(): void
+    {
+        $this->gifOffset = 0;
+        $this->gifResults = [];
+        $this->gifHasMore = false;
+
+        if (mb_strlen(trim($this->gifQuery)) < 2) {
+            return;
+        }
+
+        $page = app(GifSearch::class)->search($this->gifQuery, self::GIF_PER_PAGE, 0);
+
+        $this->gifResults = $page;
+        $this->gifOffset = count($page);
+        $this->gifHasMore = count($page) === self::GIF_PER_PAGE;
+    }
+
+    /**
+     * Fetch and append the next page of GIF results (infinite scroll).
+     */
+    public function loadMoreGifs(): void
+    {
+        if (! $this->gifHasMore || mb_strlen(trim($this->gifQuery)) < 2) {
+            return;
+        }
+
+        $page = app(GifSearch::class)->search($this->gifQuery, self::GIF_PER_PAGE, $this->gifOffset);
+
+        // Skip IDs already shown, in case the provider overlaps pages.
+        $existingIds = collect($this->gifResults)->pluck('id')->all();
+        $fresh = array_values(array_filter(
+            $page,
+            fn (array $gif): bool => ! in_array($gif['id'], $existingIds, true),
+        ));
+
+        $this->gifResults = array_merge($this->gifResults, $fresh);
+        $this->gifOffset += count($page);
+        $this->gifHasMore = count($page) === self::GIF_PER_PAGE;
+    }
+
+    /**
+     * Attach a GIF to the comment. Only URLs from the current results may be
+     * selected, so an arbitrary URL can't be injected from the client.
+     */
+    public function selectGif(string $url): void
+    {
+        if (collect($this->gifResults)->contains('full', $url)) {
+            $this->selectedGifUrl = $url;
+        }
+    }
+
+    public function clearSelectedGif(): void
+    {
+        $this->selectedGifUrl = null;
+    }
+
+    /**
+     * Reset the composer (draft text, GIF picker, edit state) for a fresh modal.
+     */
+    public function resetComposer(): void
+    {
+        $this->newComment = '';
+        $this->gifQuery = '';
+        $this->gifResults = [];
+        $this->gifOffset = 0;
+        $this->gifHasMore = false;
+        $this->selectedGifUrl = null;
+        $this->cancelEditComment();
+    }
+
+    /**
+     * AI-polish or expand the comment draft, in place.
+     *
+     * @param  'polish'|'expand'  $mode
+     */
+    public function enhanceNewComment(string $mode): void
+    {
+        $draft = trim($this->newComment);
+
+        if ($draft === '') {
+            Notification::make()->warning()->title('Write a draft first')->send();
+
+            return;
+        }
+
+        try {
+            $this->newComment = app(ReasonEnhancer::class)->enhance($draft, $mode, ['kind' => 'comment']);
+        } catch (Throwable $e) {
+            report($e);
+            Notification::make()->danger()->title('AI enhancement failed')->send();
+        }
+    }
+
+    /**
+     * Whether the AI reason enhancer is configured (controls the Polish/Expand buttons).
+     */
+    public function canEnhanceComment(): bool
+    {
+        return app(ReasonEnhancer::class)->isConfigured();
+    }
+
+    /**
+     * Post a new comment on the praise. The modal stays open afterwards.
+     */
+    public function postComment(int $praiseId): void
+    {
+        $comment = trim($this->newComment);
+
+        if ($comment === '' && blank($this->selectedGifUrl)) {
+            Notification::make()->warning()->title('Add a comment or pick a GIF')->send();
+
+            return;
+        }
+
+        PraiseComment::create([
+            'praise_id' => $praiseId,
+            'user_id' => auth()->id(),
+            'comment' => $comment !== '' ? $comment : null,
+            'gif_url' => $this->selectedGifUrl,
+        ]);
+
+        $this->resetComposer();
+
+        Notification::make()->success()->title('Comment added')->send();
+    }
+
+    /**
+     * Begin editing one of the current user's own comments.
+     */
+    public function editComment(int $commentId): void
+    {
+        $comment = PraiseComment::find($commentId);
+
+        if ($comment === null || ! $this->ownsComment($comment)) {
+            return;
+        }
+
+        $this->editingCommentId = $comment->id;
+        $this->editingCommentText = (string) $comment->comment;
+    }
+
+    public function cancelEditComment(): void
+    {
+        $this->editingCommentId = null;
+        $this->editingCommentText = '';
+    }
+
+    /**
+     * Save the edited text for the user's own comment.
+     */
+    public function updateComment(int $commentId): void
+    {
+        $comment = PraiseComment::find($commentId);
+
+        if ($comment === null || ! $this->ownsComment($comment)) {
+            return;
+        }
+
+        $text = trim($this->editingCommentText);
+
+        if ($text === '' && blank($comment->gif_url)) {
+            Notification::make()->warning()->title('Comment can\'t be empty')->send();
+
+            return;
+        }
+
+        $comment->update(['comment' => $text !== '' ? $text : null]);
+
+        $this->cancelEditComment();
+
+        Notification::make()->success()->title('Comment updated')->send();
+    }
+
+    /**
+     * Delete one of the current user's own comments.
+     */
+    public function deleteComment(int $commentId): void
+    {
+        $comment = PraiseComment::find($commentId);
+
+        if ($comment === null || ! $this->ownsComment($comment)) {
+            return;
+        }
+
+        $comment->delete();
+
+        Notification::make()->success()->title('Comment deleted')->send();
+    }
+
+    /**
+     * Whether the authenticated user owns the given comment.
+     */
+    public function ownsComment(PraiseComment $comment): bool
+    {
+        return (int) $comment->user_id === (int) auth()->id();
+    }
+
+    /**
      * The "open a praise" detail modal — shows the post, the heart, all
-     * comments, and a box to add one (Facebook-post style).
+     * comments, and an inline composer. The modal stays open after posting,
+     * editing, or deleting comments (Facebook/Slack style).
      */
     public function viewPraiseAction(): Action
     {
@@ -231,23 +491,9 @@ class PraiseWall extends Page
             ->modalContent(fn (array $arguments) => view('filament.praise.detail', [
                 'praise' => $this->loadPraise((int) $arguments['praise']),
             ]))
-            ->modalSubmitActionLabel('Post Comment')
             ->modalWidth('lg')
-            ->schema([
-                Textarea::make('comment')
-                    ->label('Write a comment')
-                    ->required()
-                    ->maxLength(1000)
-                    ->hintActions(EnhanceReason::for('comment', 'comment')),
-            ])
-            ->action(function (array $arguments, array $data): void {
-                PraiseComment::create([
-                    'praise_id' => $arguments['praise'],
-                    'user_id' => auth()->id(),
-                    'comment' => $data['comment'],
-                ]);
-
-                Notification::make()->success()->title('Comment added')->send();
-            });
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Close')
+            ->mountUsing(fn () => $this->resetComposer());
     }
 }

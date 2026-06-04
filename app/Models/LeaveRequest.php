@@ -4,17 +4,31 @@ namespace App\Models;
 
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
+use App\Services\RequestNotifier;
 use App\Support\TimeOptions;
+use Database\Factories\LeaveRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeaveRequest extends Model
 {
-    /** @use HasFactory<\Database\Factories\LeaveRequestFactory> */
+    /** @use HasFactory<LeaveRequestFactory> */
     use HasFactory;
 
     protected $guarded = [];
+
+    /**
+     * Notify the approvers whenever a request is filed for approval.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (LeaveRequest $request): void {
+            if ($request->status === AttendanceStatus::FOR_APPROVAL) {
+                app(RequestNotifier::class)->leaveFiled($request);
+            }
+        });
+    }
 
     /**
      * @return array<string, string>

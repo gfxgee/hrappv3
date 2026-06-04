@@ -6,6 +6,7 @@ use App\Filament\Pages\FileLeaveRequest;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveRequests\Pages\EditLeaveRequest;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
+use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
@@ -31,7 +32,15 @@ it('allows manager roles to access the leave request resource', function (string
     $this->actingAs(userWithRole($role));
 
     expect(LeaveRequestResource::canAccess())->toBeTrue();
-})->with(['superadmin', 'super_admin', 'hr', 'teamleader']);
+})->with(['superadmin', 'super_admin', 'hr']);
+
+it('allows a department leader to access the leave request resource without a manager role', function () {
+    $leader = User::factory()->create();
+    $leader->ledDepartments()->attach(Department::factory()->create());
+    $this->actingAs($leader);
+
+    expect(LeaveRequestResource::canAccess())->toBeTrue();
+});
 
 it('denies regular users access to the leave request resource', function () {
     $this->actingAs(User::factory()->create());

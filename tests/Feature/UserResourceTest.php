@@ -6,6 +6,7 @@ use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\RelationManagers\AttendanceLogsRelationManager;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\AttendanceLog;
+use App\Models\Department;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -149,6 +150,48 @@ it('resolves the filament avatar url from the photo column', function () {
 
     expect($withPhoto->getFilamentAvatarUrl())->toBe(Storage::disk('public')->url('avatar/gee.jpg'));
     expect($withoutPhoto->getFilamentAvatarUrl())->toBeNull();
+});
+
+it('lets a super-admin assign roles to an employee through the form', function () {
+    Role::findOrCreate('super_admin');
+    Role::findOrCreate('teamleader');
+
+    $admin = User::factory()->create();
+    $admin->assignRole('super_admin');
+    $this->actingAs($admin);
+
+    $employee = User::factory()->create();
+    $role = Role::findByName('teamleader');
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm(['roles' => [$role->id]])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($employee->refresh()->hasRole('teamleader'))->toBeTrue();
+});
+
+it('makes an employee a team leader by assigning led departments from the form', function () {
+    // The beforeEach manager holds the hr role, which may manage team leaders.
+    $employee = User::factory()->create();
+    $department = Department::factory()->create();
+
+    expect($employee->isTeamLeader())->toBeFalse();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm(['ledDepartments' => [$department->id]])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($employee->refresh()->isTeamLeader())->toBeTrue();
+});
+
+it('hides the roles section from non-super-admins', function () {
+    // The beforeEach manager only holds the hr role.
+    $employee = User::factory()->create();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->assertFormFieldDoesNotExist('roles');
 });
 
 it('lists a user\'s attendance logs in the relation manager', function () {
