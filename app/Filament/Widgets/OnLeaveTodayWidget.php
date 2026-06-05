@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\LeaveRequest;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -14,7 +15,7 @@ class OnLeaveTodayWidget extends TableWidget
 {
     protected static ?string $heading = 'On Leave Today';
 
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = ['default' => 1, 'md' => 2];
 
     protected static ?int $sort = -1;
 
@@ -23,6 +24,7 @@ class OnLeaveTodayWidget extends TableWidget
         return $table
             ->query(fn (): Builder => LeaveRequest::query()
                 ->with('user')
+                ->where('request_type', '!=', LeaveType::WFH->value)
                 ->whereDate('start_date', '<=', today())
                 ->whereDate('end_date', '>=', today())
                 ->whereNotIn('status', [
@@ -33,6 +35,10 @@ class OnLeaveTodayWidget extends TableWidget
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Name')
+                    ->url(fn (LeaveRequest $record): ?string => $record->user_id
+                        ? UserResource::getUrl('view', ['record' => $record->user_id])
+                        : null)
+                    ->color('primary')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('request_type')

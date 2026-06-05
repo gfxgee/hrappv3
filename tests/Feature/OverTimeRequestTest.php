@@ -5,6 +5,7 @@ use App\Filament\Pages\FileOverTimeRequest;
 use App\Filament\Resources\OverTimeRequests\OverTimeRequestResource;
 use App\Filament\Resources\OverTimeRequests\Pages\EditOverTimeRequest;
 use App\Filament\Resources\OverTimeRequests\Pages\ListOverTimeRequests;
+use App\Models\Department;
 use App\Models\OverTimeRequest;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -29,7 +30,15 @@ it('allows manager roles to access the overtime resource', function (string $rol
     $this->actingAs(overtimeManager($role));
 
     expect(OverTimeRequestResource::canAccess())->toBeTrue();
-})->with(['superadmin', 'super_admin', 'hr', 'teamleader']);
+})->with(['superadmin', 'super_admin', 'hr']);
+
+it('allows a department leader to access the overtime resource without a manager role', function () {
+    $leader = User::factory()->create();
+    $leader->ledDepartments()->attach(Department::factory()->create());
+    $this->actingAs($leader);
+
+    expect(OverTimeRequestResource::canAccess())->toBeTrue();
+});
 
 it('denies regular users access to the overtime resource', function () {
     $this->actingAs(User::factory()->create());
@@ -62,6 +71,51 @@ it('renders the overtime edit page', function () {
         ->assertSuccessful();
 
     expect(OverTimeRequestResource::getRecordTitle($ot))->toBeString();
+});
+
+it('lets HR verify an approved overtime request', function () {
+    $this->actingAs(overtimeManager('hr'));
+    $ot = OverTimeRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->callTableAction('verify', $ot);
+
+    expect($ot->refresh()->status)->toBe(AttendanceStatus::APPROVED_AND_VERIFIED);
+});
+
+it('only offers verify once overtime is approved', function () {
+    $this->actingAs(overtimeManager('hr'));
+    $pending = OverTimeRequest::factory()->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->assertTableActionVisible('approve', $pending)
+        ->assertTableActionHidden('verify', $pending);
+});
+
+it('bulk-approves selected pending overtime requests and stamps the date', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $pending = OverTimeRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->callTableBulkAction('approveSelected', $pending);
+
+    $pending->each(function ($ot) {
+        $ot->refresh();
+        expect($ot->status)->toBe(AttendanceStatus::APPROVED)
+            ->and($ot->approved_date)->not->toBeNull();
+    });
+});
+
+it('bulk-rejects selected pending overtime requests', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $pending = OverTimeRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->callTableBulkAction('rejectSelected', $pending);
+
+    $pending->each(fn ($ot) => expect($ot->refresh()->status)->toBe(AttendanceStatus::REJECTED));
 });
 
 it('approves an overtime request and stamps the approved date', function () {

@@ -10,7 +10,12 @@ export default defineConfig({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/css/filament/admin/theme.css', 'resources/js/app.tsx'],
-            refresh: true,
+            // refresh: true,
+            refresh: [
+                'app/Filament/**',
+                'app/Livewire/**',
+                'resources/views/**',
+            ],
             fonts: [
                 bunny('Instrument Sans', {
                     weights: [400, 500, 600],

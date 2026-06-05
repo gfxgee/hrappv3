@@ -45,17 +45,23 @@ class OverTimeRequestResource extends Resource
     }
 
     /**
-     * Roles permitted to manage overtime requests.
+     * Roles permitted to manage every employee's overtime requests.
      *
      * @var list<string>
      */
-    protected const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr', 'teamleader'];
+    protected const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
 
+    /**
+     * Full-access managers, or any team leader (i.e. anyone who leads at least
+     * one department). Team leadership is derived solely from the departments a
+     * user leads — there is no separate role to assign.
+     */
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
-        return $user !== null && $user->hasAnyRole(static::MANAGER_ROLES);
+        return $user !== null
+            && ($user->hasAnyRole(static::MANAGER_ROLES) || $user->isTeamLeader());
     }
 
     /**

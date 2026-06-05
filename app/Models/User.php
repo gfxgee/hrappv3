@@ -5,17 +5,21 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enum\UserStatus;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasAvatar;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
-use Filament\Models\Contracts\HasAvatar;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -29,10 +33,20 @@ use Spatie\Permission\Traits\HasRoles;
     'job_description', 'permanent_address', 'emergency_contact',
 ])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements HasAvatar, PasskeyUser
+class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+
+    /**
+     * Whether this user may access the Filament panel. The panel is the
+     * employee self-service portal, so every active employee gets in;
+     * per-resource role checks govern what they can actually do.
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->status === UserStatus::ACTIVE->value;
+    }
 
     /**
      * The model's default attribute values.
@@ -61,9 +75,9 @@ class User extends Authenticatable implements HasAvatar, PasskeyUser
     /**
      * Scope to employees whose status is active.
      *
-     * @param  \Illuminate\Database\Eloquent\Builder<User>  $query
+     * @param  Builder<User>  $query
      */
-    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): void
+    public function scopeActive(Builder $query): void
     {
         $query->where('status', UserStatus::ACTIVE->value);
     }
@@ -158,6 +172,14 @@ class User extends Authenticatable implements HasAvatar, PasskeyUser
     public function isTeamLeader(): bool
     {
         return $this->ledDepartments()->exists();
+    }
+
+    /**
+     * Whether the user holds a super-admin role (full, unrestricted access).
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasAnyRole(['superadmin', 'super_admin']);
     }
 
     /**

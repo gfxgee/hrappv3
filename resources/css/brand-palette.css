@@ -1,0 +1,90 @@
+/*
+| Brand primitive palettes (from the Figma "Colors" export).
+|
+| Imported by both resources/css/app.css (Inertia/React) and
+| resources/css/filament/admin/theme.css (admin panel), so the same color
+| utilities — e.g. bg-purple-700, text-yellow-400, bg-beige-100,
+| bg-status-complete — are available on every surface.
+|
+| These override Tailwind's default purple/yellow/blue/gray with the brand
+| values. Filament's own chrome uses its internal --gray-* variables and is
+| unaffected; only Tailwind color utilities used in our markup change.
+*/
+@theme {
+    /* Purple */
+    --color-purple-50: #edeeff;
+    --color-purple-100: #dddfff;
+    --color-purple-200: #c2c3ff;
+    --color-purple-300: #9e9dff;
+    --color-purple-400: #8477ff;
+    --color-purple-500: #7457fd;
+    --color-purple-600: #6738f3;
+    --color-purple-700: #592bd7;
+    --color-purple-800: #4826ad;
+    --color-purple-900: #3d2788;
+    --color-purple-950: #1f1342;
+    --color-purple-1000: #131028;
+
+    /* Yellow */
+    --color-yellow-50: #fff8eb;
+    --color-yellow-100: #fdebc8;
+    --color-yellow-200: #fcd48b;
+    --color-yellow-300: #fab84f;
+    --color-yellow-400: #f99f29;
+    --color-yellow-500: #f37a0d;
+    --color-yellow-600: #d75708;
+    --color-yellow-700: #b2390b;
+    --color-yellow-800: #912c0f;
+    --color-yellow-900: #772510;
+    --color-yellow-950: #441004;
+
+    /* Blue */
+    --color-blue-50: #eff9ff;
+    --color-blue-100: #def2ff;
+    --color-blue-200: #b6e8ff;
+    --color-blue-300: #75d8ff;
+    --color-blue-400: #2cc4ff;
+    --color-blue-500: #009fe3;
+    --color-blue-600: #008ad4;
+    --color-blue-700: #006eab;
+    --color-blue-800: #005d8d;
+    --color-blue-900: #064d74;
+    --color-blue-950: #04314d;
+
+    /* Beige */
+    --color-beige-50: #f7f6f2;
+    --color-beige-100: #efede5;
+    --color-beige-200: #dedaca;
+    --color-beige-300: #c9c1a8;
+    --color-beige-400: #b2a485;
+    --color-beige-500: #a3906c;
+    --color-beige-600: #958061;
+    --color-beige-700: #7d6951;
+    --color-beige-800: #665646;
+    --color-beige-900: #54473a;
+    --color-beige-950: #2c241e;
+
+    /* Gray (neutral brand scale; 0 = white) */
+    --color-gray-0: #ffffff;
+    --color-gray-50: #f7f7f7;
+    --color-gray-100: #f0f0f0;
+    --color-gray-200: #e3e3e3;
+    --color-gray-300: #d1d1d1;
+    --color-gray-400: #c0c0c0;
+    --color-gray-500: #aaaaaa;
+    --color-gray-600: #969696;
+    --color-gray-700: #818181;
+    --color-gray-800: #6a6a6a;
+    --color-gray-900: #585858;
+    --color-gray-950: #333333;
+    --color-gray-1000: #131028;
+
+    /* Status (Success + ClickUp workflow colors), namespaced to avoid
+       clashing with Filament's semantic success/danger/etc. */
+    --color-status-success: #46b45a;
+    --color-status-queue: #c0c0c0;
+    --color-status-todo: #eb7f7f;
+    --color-status-in-progress: #1276e2;
+    --color-status-for-review: #5c47cd;
+    --color-status-complete: #238b7f;
+}

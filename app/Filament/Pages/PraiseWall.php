@@ -9,6 +9,8 @@ use App\Models\PraiseComment;
 use App\Models\PraiseReaction;
 use App\Models\PraiseSession;
 use App\Models\User;
+use App\Services\GifSearch;
+use App\Services\ReasonEnhancer;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -18,6 +20,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use Throwable;
 
 class PraiseWall extends Page
 {
@@ -33,6 +36,70 @@ class PraiseWall extends Page
 
     /** @var list<string> */
     protected const CYCLE_MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+
+    /**
+     * How many GIFs to fetch per page (used for infinite scroll).
+     */
+    public const GIF_PER_PAGE = 12;
+
+    /**
+     * Active feed sort: recent | liked | commented | top_recipients.
+     */
+    public string $sort = 'recent';
+
+    /**
+     * Allowed feed sorts and their button labels.
+     *
+     * @var array<string, string>
+     */
+    public const SORTS = [
+        'recent' => '📅 Most recent',
+        'liked' => '💖 Most liked',
+        'commented' => '💬 Most commented',
+        'top_recipients' => '🏅 Top recipients',
+    ];
+
+    /**
+     * Draft text for the comment composer in the open praise modal.
+     */
+    public string $newComment = '';
+
+    /**
+     * The comment currently being edited inline, if any.
+     */
+    public ?int $editingCommentId = null;
+
+    /**
+     * Draft text while editing an existing comment.
+     */
+    public string $editingCommentText = '';
+
+    /**
+     * Current GIF search query in the comment picker.
+     */
+    public string $gifQuery = '';
+
+    /**
+     * Results of the latest GIF search (accumulated across pages).
+     *
+     * @var list<array{id: string, preview: string, full: string}>
+     */
+    public array $gifResults = [];
+
+    /**
+     * Offset of the next GIF page to fetch.
+     */
+    public int $gifOffset = 0;
+
+    /**
+     * Whether more GIF results are likely available for the current query.
+     */
+    public bool $gifHasMore = false;
+
+    /**
+     * The GIF the user has picked to attach to their comment, if any.
+     */
+    public ?string $selectedGifUrl = null;
 
     /**
      * Praise count for the current cycle (or the uncategorized wall).
@@ -69,7 +136,7 @@ class PraiseWall extends Page
     {
         return [
             $this->giveAction(),
-            $this->startNewCycleAction(),
+            $this->finishCycleAction(),
         ];
     }
 
@@ -129,18 +196,23 @@ class PraiseWall extends Page
             });
     }
 
-    public function startNewCycleAction(): Action
+    public function finishCycleAction(): Action
     {
-        return Action::make('startNewCycle')
-            ->label('Start New Cycle')
-            ->icon('heroicon-o-arrow-path')
+        return Action::make('finishCycle')
+            ->label('Finish Cycle')
+            ->icon('heroicon-o-trophy')
             ->color('gray')
             ->visible(fn (): bool => $this->canManageCycles())
-            ->modalHeading('Start a new recognition cycle')
-            ->modalDescription('Praises on the wall now will be archived to the current cycle, and the wall starts fresh.')
+            ->modalHeading('Finish cycle & crown the winners')
+            ->modalDescription('Review the podium below, then archive this cycle and start a fresh one.')
+            ->modalContent(fn () => view('filament.praise.podium', [
+                'podium' => $this->podiumForSession(PraiseSession::current()),
+                'cycleName' => PraiseSession::current()?->name,
+            ]))
+            ->modalSubmitActionLabel('Archive & start new cycle')
             ->schema([
                 TextInput::make('name')
-                    ->label('Cycle name')
+                    ->label('New cycle name')
                     ->required()
                     ->maxLength(255)
                     ->default(now()->format('F Y')),
@@ -154,9 +226,52 @@ class PraiseWall extends Page
                 Notification::make()
                     ->success()
                     ->title('New cycle started 🎉')
-                    ->body('The wall is fresh — previous praises are archived.')
+                    ->body('The previous cycle is archived with its winners.')
                     ->send();
             });
+    }
+
+    /**
+     * Switch the feed sort (validated against the allowed set).
+     */
+    public function setSort(string $sort): void
+    {
+        $this->sort = array_key_exists($sort, self::SORTS) ? $sort : 'recent';
+    }
+
+    /**
+     * Rank the recipients of a cycle by total reactions received, then by
+     * praise count. Returns the top entries for the podium / leaderboard.
+     *
+     * @return list<array{rank: int, user: ?User, reactions: int, praises: int}>
+     */
+    public function podiumForSession(?PraiseSession $session, int $limit = 10): array
+    {
+        $rows = Praise::query()
+            ->leftJoin('praise_reactions', 'praise_reactions.praise_id', '=', 'praises.id')
+            ->when(
+                $session !== null,
+                fn ($query) => $query->where('praises.praise_session_id', $session->id),
+                fn ($query) => $query->whereNull('praises.praise_session_id'),
+            )
+            ->groupBy('praises.recipient_id')
+            ->selectRaw('praises.recipient_id, COUNT(DISTINCT praises.id) as praises, COUNT(praise_reactions.id) as reactions')
+            ->orderByDesc('reactions')
+            ->orderByDesc('praises')
+            ->limit($limit)
+            ->get();
+
+        $users = User::query()
+            ->whereIn('id', $rows->pluck('recipient_id'))
+            ->get()
+            ->keyBy('id');
+
+        return $rows->values()->map(fn ($row, int $index): array => [
+            'rank' => $index + 1,
+            'user' => $users->get($row->recipient_id),
+            'reactions' => (int) $row->reactions,
+            'praises' => (int) $row->praises,
+        ])->all();
     }
 
     /**
@@ -169,16 +284,43 @@ class PraiseWall extends Page
     {
         $current = PraiseSession::current();
 
-        return Praise::query()
+        $praises = Praise::query()
             ->with(['sender', 'recipient', 'badge', 'reactions', 'comments.user'])
+            ->withCount(['reactions', 'comments'])
             ->when(
                 $current !== null,
                 fn ($query) => $query->where('praise_session_id', $current->id),
                 fn ($query) => $query->whereNull('praise_session_id'),
             )
             ->latest()
-            ->limit(60)
+            ->limit(100)
             ->get();
+
+        return match ($this->sort) {
+            'liked' => $praises->sortByDesc('reactions_count')->values(),
+            'commented' => $praises->sortByDesc('comments_count')->values(),
+            'top_recipients' => $this->sortByTopRecipients($praises),
+            default => $praises,
+        };
+    }
+
+    /**
+     * Cluster the feed by recipient, ordering recipients by the total reactions
+     * they received in the cycle (matching the podium ranking).
+     *
+     * @param  Collection<int, Praise>  $praises
+     * @return Collection<int, Praise>
+     */
+    protected function sortByTopRecipients(Collection $praises): Collection
+    {
+        $reactionsByRecipient = $praises
+            ->groupBy('recipient_id')
+            ->map(fn (Collection $group): int => $group->sum('reactions_count'));
+
+        return $praises
+            ->sortByDesc(fn (Praise $praise): int => ($reactionsByRecipient[$praise->recipient_id] ?? 0) * 1_000_000
+                + $praise->reactions_count)
+            ->values();
     }
 
     public function toggleReaction(int $praiseId): void
@@ -221,8 +363,300 @@ class PraiseWall extends Page
     }
 
     /**
+     * Live-search GIFs as the query in the comment picker changes.
+     */
+    public function updatedGifQuery(): void
+    {
+        $this->searchGifs();
+    }
+
+    /**
+     * Run a fresh GIF search for the current query (min. 2 characters),
+     * replacing any previous results.
+     */
+    public function searchGifs(): void
+    {
+        $this->gifOffset = 0;
+        $this->gifResults = [];
+        $this->gifHasMore = false;
+
+        if (mb_strlen(trim($this->gifQuery)) < 2) {
+            return;
+        }
+
+        $page = app(GifSearch::class)->search($this->gifQuery, self::GIF_PER_PAGE, 0);
+
+        $this->gifResults = $page;
+        $this->gifOffset = count($page);
+        $this->gifHasMore = count($page) === self::GIF_PER_PAGE;
+    }
+
+    /**
+     * Fetch and append the next page of GIF results (infinite scroll).
+     */
+    public function loadMoreGifs(): void
+    {
+        if (! $this->gifHasMore || mb_strlen(trim($this->gifQuery)) < 2) {
+            return;
+        }
+
+        $page = app(GifSearch::class)->search($this->gifQuery, self::GIF_PER_PAGE, $this->gifOffset);
+
+        // Skip IDs already shown, in case the provider overlaps pages.
+        $existingIds = collect($this->gifResults)->pluck('id')->all();
+        $fresh = array_values(array_filter(
+            $page,
+            fn (array $gif): bool => ! in_array($gif['id'], $existingIds, true),
+        ));
+
+        $this->gifResults = array_merge($this->gifResults, $fresh);
+        $this->gifOffset += count($page);
+        $this->gifHasMore = count($page) === self::GIF_PER_PAGE;
+    }
+
+    /**
+     * Attach a GIF to the comment. Only URLs from the current results may be
+     * selected, so an arbitrary URL can't be injected from the client.
+     */
+    public function selectGif(string $url): void
+    {
+        if (collect($this->gifResults)->contains('full', $url)) {
+            $this->selectedGifUrl = $url;
+        }
+    }
+
+    public function clearSelectedGif(): void
+    {
+        $this->selectedGifUrl = null;
+    }
+
+    /**
+     * Reset the composer (draft text, GIF picker, edit state) for a fresh modal.
+     */
+    public function resetComposer(): void
+    {
+        $this->newComment = '';
+        $this->gifQuery = '';
+        $this->gifResults = [];
+        $this->gifOffset = 0;
+        $this->gifHasMore = false;
+        $this->selectedGifUrl = null;
+        $this->cancelEditComment();
+    }
+
+    /**
+     * AI-polish or expand the comment draft, in place.
+     *
+     * @param  'polish'|'expand'  $mode
+     */
+    public function enhanceNewComment(string $mode): void
+    {
+        $draft = trim($this->newComment);
+
+        if ($draft === '') {
+            Notification::make()->warning()->title('Write a draft first')->send();
+
+            return;
+        }
+
+        try {
+            $this->newComment = app(ReasonEnhancer::class)->enhance($draft, $mode, ['kind' => 'comment']);
+        } catch (Throwable $e) {
+            report($e);
+            Notification::make()->danger()->title('AI enhancement failed')->send();
+        }
+    }
+
+    /**
+     * Whether the AI reason enhancer is configured (controls the Polish/Expand buttons).
+     */
+    public function canEnhanceComment(): bool
+    {
+        return app(ReasonEnhancer::class)->isConfigured();
+    }
+
+    /**
+     * Post a new comment on the praise. The modal stays open afterwards.
+     */
+    public function postComment(int $praiseId): void
+    {
+        $comment = trim($this->newComment);
+
+        if ($comment === '' && blank($this->selectedGifUrl)) {
+            Notification::make()->warning()->title('Add a comment or pick a GIF')->send();
+
+            return;
+        }
+
+        PraiseComment::create([
+            'praise_id' => $praiseId,
+            'user_id' => auth()->id(),
+            'comment' => $comment !== '' ? $comment : null,
+            'gif_url' => $this->selectedGifUrl,
+        ]);
+
+        $this->resetComposer();
+
+        Notification::make()->success()->title('Comment added')->send();
+    }
+
+    /**
+     * Begin editing one of the current user's own comments.
+     */
+    public function editComment(int $commentId): void
+    {
+        $comment = PraiseComment::find($commentId);
+
+        if ($comment === null || ! $this->ownsComment($comment)) {
+            return;
+        }
+
+        $this->editingCommentId = $comment->id;
+        $this->editingCommentText = (string) $comment->comment;
+    }
+
+    public function cancelEditComment(): void
+    {
+        $this->editingCommentId = null;
+        $this->editingCommentText = '';
+    }
+
+    /**
+     * Save the edited text for the user's own comment.
+     */
+    public function updateComment(int $commentId): void
+    {
+        $comment = PraiseComment::find($commentId);
+
+        if ($comment === null || ! $this->ownsComment($comment)) {
+            return;
+        }
+
+        $text = trim($this->editingCommentText);
+
+        if ($text === '' && blank($comment->gif_url)) {
+            Notification::make()->warning()->title('Comment can\'t be empty')->send();
+
+            return;
+        }
+
+        $comment->update(['comment' => $text !== '' ? $text : null]);
+
+        $this->cancelEditComment();
+
+        Notification::make()->success()->title('Comment updated')->send();
+    }
+
+    /**
+     * Delete one of the current user's own comments.
+     */
+    public function deleteComment(int $commentId): void
+    {
+        $comment = PraiseComment::find($commentId);
+
+        if ($comment === null || ! $this->ownsComment($comment)) {
+            return;
+        }
+
+        $comment->delete();
+
+        Notification::make()->success()->title('Comment deleted')->send();
+    }
+
+    /**
+     * Whether the authenticated user owns the given comment.
+     */
+    public function ownsComment(PraiseComment $comment): bool
+    {
+        return (int) $comment->user_id === (int) auth()->id();
+    }
+
+    /**
+     * Whether the authenticated user sent (nominated) the given praise.
+     */
+    public function ownsPraise(Praise $praise): bool
+    {
+        return (int) $praise->user_id === (int) auth()->id();
+    }
+
+    /**
+     * Edit a praise you sent — change its badge or message.
+     */
+    public function editPraiseAction(): Action
+    {
+        return Action::make('editPraise')
+            ->modalHeading('Edit praise')
+            ->modalSubmitActionLabel('Save changes')
+            ->fillForm(fn (array $arguments): array => [
+                'badge_id' => $this->loadPraise((int) $arguments['praise'])?->badge_id,
+                'message' => $this->loadPraise((int) $arguments['praise'])?->message,
+            ])
+            ->schema([
+                Select::make('badge_id')
+                    ->label('Badge')
+                    ->options(fn (): array => Badge::active()
+                        ->orderBy('label')
+                        ->get()
+                        ->mapWithKeys(fn (Badge $badge): array => [
+                            $badge->id => trim(($badge->icon ? $badge->icon.' ' : '').$badge->label),
+                        ])
+                        ->all())
+                    ->placeholder('No badge')
+                    ->native(false),
+                Textarea::make('message')
+                    ->label('Why are they awesome?')
+                    ->required()
+                    ->maxLength(1000)
+                    ->hintActions(EnhanceReason::for('praise', 'message')),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $praise = Praise::find((int) $arguments['praise']);
+
+                if ($praise === null || ! $this->ownsPraise($praise)) {
+                    Notification::make()->danger()->title('You can only edit your own praise')->send();
+
+                    return;
+                }
+
+                $praise->update([
+                    'badge_id' => $data['badge_id'] ?? null,
+                    'message' => $data['message'],
+                ]);
+
+                Notification::make()->success()->title('Praise updated')->send();
+            });
+    }
+
+    /**
+     * Delete a praise you sent, along with its reactions and comments.
+     */
+    public function deletePraiseAction(): Action
+    {
+        return Action::make('deletePraise')
+            ->requiresConfirmation()
+            ->color('danger')
+            ->modalHeading('Delete this praise?')
+            ->modalDescription('This permanently removes the praise along with its reactions and comments.')
+            ->modalSubmitActionLabel('Delete')
+            ->action(function (array $arguments): void {
+                $praise = Praise::find((int) $arguments['praise']);
+
+                if ($praise === null || ! $this->ownsPraise($praise)) {
+                    Notification::make()->danger()->title('You can only delete your own praise')->send();
+
+                    return;
+                }
+
+                $praise->delete();
+
+                Notification::make()->success()->title('Praise deleted')->send();
+            });
+    }
+
+    /**
      * The "open a praise" detail modal — shows the post, the heart, all
-     * comments, and a box to add one (Facebook-post style).
+     * comments, and an inline composer. The modal stays open after posting,
+     * editing, or deleting comments (Facebook/Slack style).
      */
     public function viewPraiseAction(): Action
     {
@@ -231,23 +665,9 @@ class PraiseWall extends Page
             ->modalContent(fn (array $arguments) => view('filament.praise.detail', [
                 'praise' => $this->loadPraise((int) $arguments['praise']),
             ]))
-            ->modalSubmitActionLabel('Post Comment')
             ->modalWidth('lg')
-            ->schema([
-                Textarea::make('comment')
-                    ->label('Write a comment')
-                    ->required()
-                    ->maxLength(1000)
-                    ->hintActions(EnhanceReason::for('comment', 'comment')),
-            ])
-            ->action(function (array $arguments, array $data): void {
-                PraiseComment::create([
-                    'praise_id' => $arguments['praise'],
-                    'user_id' => auth()->id(),
-                    'comment' => $data['comment'],
-                ]);
-
-                Notification::make()->success()->title('Comment added')->send();
-            });
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel('Close')
+            ->mountUsing(fn () => $this->resetComposer());
     }
 }

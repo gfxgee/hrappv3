@@ -3,18 +3,32 @@
 namespace App\Models;
 
 use App\Enum\AttendanceStatus;
+use App\Services\RequestNotifier;
+use Database\Factories\OverTimeRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OverTimeRequest extends Model
 {
-    /** @use HasFactory<\Database\Factories\OverTimeRequestFactory> */
+    /** @use HasFactory<OverTimeRequestFactory> */
     use HasFactory;
 
     protected $table = 'over_time_requests';
 
     protected $guarded = [];
+
+    /**
+     * Notify the approvers whenever a request is filed for approval.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (OverTimeRequest $request): void {
+            if ($request->status === AttendanceStatus::FOR_APPROVAL) {
+                app(RequestNotifier::class)->overtimeFiled($request);
+            }
+        });
+    }
 
     /**
      * @return array<string, string>

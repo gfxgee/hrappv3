@@ -3,9 +3,12 @@
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Filament\Resources\Users\RelationManagers\AttendanceLogsRelationManager;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\AttendanceLog;
+use App\Models\Department;
+use App\Models\LeaveRequest;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
@@ -25,6 +28,30 @@ beforeEach(function () {
 
 it('renders the list page', function () {
     Livewire::test(ListUsers::class)->assertSuccessful();
+});
+
+it('lets active employees access the panel but blocks inactive ones', function () {
+    $panel = Filament::getPanel('admin');
+    $active = User::factory()->create(['status' => 'active']);
+    $inactive = User::factory()->create(['status' => 'inactive']);
+
+    expect($active->canAccessPanel($panel))->toBeTrue()
+        ->and($inactive->canAccessPanel($panel))->toBeFalse();
+});
+
+it('soft-deletes a user and preserves their records', function () {
+    $user = User::factory()->create();
+    $leave = LeaveRequest::factory()->for($user)->create();
+
+    $user->delete();
+
+    expect(User::find($user->id))->toBeNull()                 // hidden from normal queries
+        ->and(User::withTrashed()->find($user->id)?->trashed())->toBeTrue()
+        ->and(LeaveRequest::find($leave->id))->not->toBeNull(); // history survives
+});
+
+it('blocks force-deleting (hard delete) a user', function () {
+    expect(UserResource::canForceDelete(User::factory()->create()))->toBeFalse();
 });
 
 it('shows the total user count as a navigation badge', function () {
@@ -72,6 +99,14 @@ it('renders the edit page', function () {
 
     Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
         ->assertSuccessful();
+});
+
+it('renders the read-only view page that names link to', function () {
+    $user = User::factory()->create(['name' => 'Linked Employee']);
+
+    Livewire::test(ViewUser::class, ['record' => $user->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('Linked Employee');
 });
 
 it('creates a user along with the related user data', function () {
@@ -126,6 +161,48 @@ it('resolves the filament avatar url from the photo column', function () {
     expect($withoutPhoto->getFilamentAvatarUrl())->toBeNull();
 });
 
+it('lets a super-admin assign roles to an employee through the form', function () {
+    Role::findOrCreate('super_admin');
+    Role::findOrCreate('teamleader');
+
+    $admin = User::factory()->create();
+    $admin->assignRole('super_admin');
+    $this->actingAs($admin);
+
+    $employee = User::factory()->create();
+    $role = Role::findByName('teamleader');
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm(['roles' => [$role->id]])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($employee->refresh()->hasRole('teamleader'))->toBeTrue();
+});
+
+it('makes an employee a team leader by assigning led departments from the form', function () {
+    // The beforeEach manager holds the hr role, which may manage team leaders.
+    $employee = User::factory()->create();
+    $department = Department::factory()->create();
+
+    expect($employee->isTeamLeader())->toBeFalse();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm(['ledDepartments' => [$department->id]])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($employee->refresh()->isTeamLeader())->toBeTrue();
+});
+
+it('hides the roles section from non-super-admins', function () {
+    // The beforeEach manager only holds the hr role.
+    $employee = User::factory()->create();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->assertFormFieldDoesNotExist('roles');
+});
+
 it('lists a user\'s attendance logs in the relation manager', function () {
     $user = User::factory()->create();
     $login = AttendanceLog::create([
@@ -145,4 +222,34 @@ it('lists a user\'s attendance logs in the relation manager', function () {
     ])
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$login, $logout]);
+});
+
+it('filters attendance logs by a date range', function () {
+    $user = User::factory()->create();
+
+    $old = AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web']);
+    $old->forceFill(['created_at' => '2026-06-01 09:00:00'])->save();
+
+    $recent = AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web']);
+    $recent->forceFill(['created_at' => '2026-06-15 09:00:00'])->save();
+
+    Livewire::test(AttendanceLogsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->filterTable('logged_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->assertCanSeeTableRecords([$recent])
+        ->assertCanNotSeeTableRecords([$old]);
+});
+
+it('exports attendance logs as a CSV download', function () {
+    $user = User::factory()->create();
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web']);
+
+    Livewire::test(AttendanceLogsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->callTableAction('export')
+        ->assertFileDownloaded();
 });

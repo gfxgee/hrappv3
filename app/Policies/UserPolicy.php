@@ -50,8 +50,12 @@ class UserPolicy
         return $this->canManage($user);
     }
 
+    /**
+     * Hard deletes are blocked everywhere — employees are soft-deleted so
+     * their leave, attendance and other history is preserved.
+     */
     public function forceDelete(User $user, User $model): bool
     {
-        return $this->canManage($user);
+        return false;
     }
 }

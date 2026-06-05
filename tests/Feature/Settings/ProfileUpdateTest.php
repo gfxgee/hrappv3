@@ -64,7 +64,8 @@ test('user can delete their account', function () {
         ->assertRedirect(route('home'));
 
     $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+    // The account is soft-deleted (history preserved) rather than hard-deleted.
+    $this->assertSoftDeleted($user);
 });
 
 test('correct password must be provided to delete account', function () {

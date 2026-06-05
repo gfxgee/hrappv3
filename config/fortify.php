@@ -161,7 +161,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registration is disabled — employees are created by HR, not self-serve.
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

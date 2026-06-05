@@ -6,6 +6,7 @@ use App\Filament\Pages\FileLeaveRequest;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\LeaveRequests\Pages\EditLeaveRequest;
 use App\Filament\Resources\LeaveRequests\Pages\ListLeaveRequests;
+use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
@@ -31,7 +32,15 @@ it('allows manager roles to access the leave request resource', function (string
     $this->actingAs(userWithRole($role));
 
     expect(LeaveRequestResource::canAccess())->toBeTrue();
-})->with(['superadmin', 'super_admin', 'hr', 'teamleader']);
+})->with(['superadmin', 'super_admin', 'hr']);
+
+it('allows a department leader to access the leave request resource without a manager role', function () {
+    $leader = User::factory()->create();
+    $leader->ledDepartments()->attach(Department::factory()->create());
+    $this->actingAs($leader);
+
+    expect(LeaveRequestResource::canAccess())->toBeTrue();
+});
 
 it('denies regular users access to the leave request resource', function () {
     $this->actingAs(User::factory()->create());
@@ -66,6 +75,31 @@ it('renders the leave request edit page', function () {
     expect(LeaveRequestResource::getRecordTitle($leave))->toBeString();
 });
 
+it('bulk-approves selected pending leave requests, skipping decided ones', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $pending = LeaveRequest::factory()->count(2)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+    $alreadyApproved = LeaveRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->callTableBulkAction('approveSelected', $pending->push($alreadyApproved));
+
+    expect($pending[0]->refresh()->status)->toBe(AttendanceStatus::APPROVED)
+        ->and($pending[1]->refresh()->status)->toBe(AttendanceStatus::APPROVED)
+        ->and($alreadyApproved->refresh()->status)->toBe(AttendanceStatus::APPROVED);
+});
+
+it('bulk-rejects selected pending leave requests', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $pending = LeaveRequest::factory()->count(3)->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->callTableBulkAction('rejectSelected', $pending);
+
+    $pending->each(fn ($leave) => expect($leave->refresh()->status)->toBe(AttendanceStatus::REJECTED));
+});
+
 it('approves a leave request from the resource table', function () {
     $this->actingAs(userWithRole('hr'));
     $leave = LeaveRequest::factory()->create();
@@ -74,6 +108,38 @@ it('approves a leave request from the resource table', function () {
         ->callTableAction('approve', $leave);
 
     expect($leave->refresh()->status)->toBe(AttendanceStatus::APPROVED);
+});
+
+it('lets HR verify an approved leave request', function () {
+    $this->actingAs(userWithRole('hr'));
+    $leave = LeaveRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->callTableAction('verify', $leave);
+
+    expect($leave->refresh()->status)->toBe(AttendanceStatus::APPROVED_AND_VERIFIED);
+});
+
+it('only offers verify once a leave is approved', function () {
+    $this->actingAs(userWithRole('hr'));
+    $pending = LeaveRequest::factory()->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->assertTableActionVisible('approve', $pending)
+        ->assertTableActionHidden('verify', $pending);
+});
+
+it('does not let a team leader verify an approved leave', function () {
+    $department = Department::factory()->create();
+    $leader = User::factory()->create();
+    $leader->ledDepartments()->attach($department);
+    $employee = User::factory()->create(['department_id' => $department->id]);
+    $leave = LeaveRequest::factory()->for($employee)->create(['status' => AttendanceStatus::APPROVED]);
+
+    $this->actingAs($leader);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->assertTableActionHidden('verify', $leave);
 });
 
 it('renders the file leave request page', function () {
