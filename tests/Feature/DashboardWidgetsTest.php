@@ -3,9 +3,11 @@
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Widgets\OnLeaveTodayWidget;
 use App\Filament\Widgets\UpcomingBirthdaysWidget;
 use App\Filament\Widgets\UpcomingHolidaysWidget;
 use App\Filament\Widgets\UpcomingLeavesWidget;
+use App\Filament\Widgets\WorkFromHomeTodayWidget;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
@@ -93,4 +95,49 @@ it('lists all employees upcoming leaves, excluding past and same-day starts', fu
 
 it('renders the upcoming leaves widget', function () {
     Livewire::test(UpcomingLeavesWidget::class)->assertSuccessful();
+});
+
+it('lists only employees working from home today', function () {
+    $wfhUser = User::factory()->create(['status' => 'active']);
+    $vlUser = User::factory()->create(['status' => 'active']);
+
+    $wfh = LeaveRequest::factory()->for($wfhUser)->create([
+        'request_type' => LeaveType::WFH,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => today()->toDateString(),
+        'end_date' => today()->toDateString(),
+    ]);
+    LeaveRequest::factory()->for($vlUser)->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => today()->toDateString(),
+        'end_date' => today()->toDateString(),
+    ]);
+
+    $ids = (new WorkFromHomeTodayWidget)->entries()->pluck('id');
+
+    expect($ids)->toContain($wfh->id)->toHaveCount(1);
+});
+
+it('renders the work from home today widget', function () {
+    Livewire::test(WorkFromHomeTodayWidget::class)->assertSuccessful();
+});
+
+it('excludes work-from-home from the on leave today table', function () {
+    $wfh = LeaveRequest::factory()->create([
+        'request_type' => LeaveType::WFH,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => today()->toDateString(),
+        'end_date' => today()->toDateString(),
+    ]);
+    $vacation = LeaveRequest::factory()->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => today()->toDateString(),
+        'end_date' => today()->toDateString(),
+    ]);
+
+    Livewire::test(OnLeaveTodayWidget::class)
+        ->assertCanSeeTableRecords([$vacation])
+        ->assertCanNotSeeTableRecords([$wfh]);
 });

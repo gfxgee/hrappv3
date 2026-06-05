@@ -8,6 +8,7 @@
 
         {{-- Right column (1/3) --}}
         <div class="space-y-6">
+            @livewire(\App\Filament\Widgets\WorkFromHomeTodayWidget::class)
             @livewire(\App\Filament\Widgets\UpcomingBirthdaysWidget::class)
             @livewire(\App\Filament\Widgets\UpcomingHolidaysWidget::class)
             @livewire(\App\Filament\Widgets\UpcomingLeavesWidget::class)

@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
@@ -29,7 +30,8 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login(Login::class)
             ->passwordReset()
-            ->profile()
+            ->sidebarCollapsibleOnDesktop()
+            ->profile(EditProfile::class, isSimple: false)
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->font('Poppins')

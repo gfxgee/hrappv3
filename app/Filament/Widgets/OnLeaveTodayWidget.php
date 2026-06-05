@@ -24,6 +24,7 @@ class OnLeaveTodayWidget extends TableWidget
         return $table
             ->query(fn (): Builder => LeaveRequest::query()
                 ->with('user')
+                ->where('request_type', '!=', LeaveType::WFH->value)
                 ->whereDate('start_date', '<=', today())
                 ->whereDate('end_date', '>=', today())
                 ->whereNotIn('status', [
