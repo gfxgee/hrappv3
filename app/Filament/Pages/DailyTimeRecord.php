@@ -142,6 +142,22 @@ class DailyTimeRecord extends Page
         return Carbon::parse($this->from)->toFormattedDateString().' — '.Carbon::parse($this->until)->toFormattedDateString();
     }
 
+    /**
+     * Render a minute count as a human-readable duration, e.g. 590 → "9h 50m".
+     */
+    public function humanMinutes(int $minutes): string
+    {
+        $minutes = abs($minutes);
+        $hours = intdiv($minutes, 60);
+        $remaining = $minutes % 60;
+
+        return match (true) {
+            $hours === 0 => "{$remaining}m",
+            $remaining === 0 => "{$hours}h",
+            default => "{$hours}h {$remaining}m",
+        };
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Record

@@ -87,8 +87,8 @@
                             <td class="py-1.5 pr-3 tabular-nums">{{ $row['time_in'] ?? '—' }}</td>
                             <td class="py-1.5 pr-3 tabular-nums">{{ $row['time_out'] ?? '—' }}</td>
                             <td class="py-1.5 pr-3 text-right tabular-nums">{{ $row['hours'] ?: '—' }}</td>
-                            <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['late'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['late'] ?: '—' }}</td>
-                            <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['undertime'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['undertime'] ?: '—' }}</td>
+                            <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['late'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['late'] ? $this->humanMinutes($row['late']) : '—' }}</td>
+                            <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['undertime'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['undertime'] ? $this->humanMinutes($row['undertime']) : '—' }}</td>
                             <td class="py-1.5 pr-3 text-right tabular-nums">{{ $row['overtime'] ?: '—' }}</td>
                             <td class="py-1.5">
                                 <span @class([
@@ -107,8 +107,8 @@
                     <tr class="border-t-2 border-gray-200 font-semibold dark:border-white/10">
                         <td class="py-2 pr-3" colspan="4">Totals</td>
                         <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['hours'] }}</td>
-                        <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['late'] }}</td>
-                        <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['undertime'] }}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['late'] ? $this->humanMinutes($totals['late']) : '—' }}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['undertime'] ? $this->humanMinutes($totals['undertime']) : '—' }}</td>
                         <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['overtime'] }}</td>
                         <td class="py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                             {{ $totals['present'] }} present · {{ $totals['absent'] }} absent · {{ $totals['leave'] }} leave

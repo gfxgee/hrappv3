@@ -55,6 +55,16 @@ it('switches the period with the month shortcuts', function () {
         ->assertSet('until', now()->subMonthNoOverflow()->endOfMonth()->toDateString());
 });
 
+it('formats minutes as a human-readable duration', function () {
+    $page = new DailyTimeRecord;
+
+    expect($page->humanMinutes(590))->toBe('9h 50m')
+        ->and($page->humanMinutes(80))->toBe('1h 20m')
+        ->and($page->humanMinutes(375))->toBe('6h 15m')
+        ->and($page->humanMinutes(45))->toBe('45m')
+        ->and($page->humanMinutes(120))->toBe('2h');
+});
+
 it('exports the DTR as a CSV download', function () {
     $this->actingAs(User::factory()->create(['status' => 'active']));
 
