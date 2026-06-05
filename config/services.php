@@ -35,6 +35,14 @@ return [
         ],
     ],
 
+    'microsoft' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => env('MICROSOFT_REDIRECT_URI', '/admin/auth/microsoft/callback'),
+        // Use a specific Entra tenant ID, or "common" to allow any org account.
+        'tenant' => env('MICROSOFT_TENANT_ID', 'common'),
+    ],
+
     'gif' => [
         // Which GIF search provider to use: "giphy" or "tenor".
         'provider' => env('GIF_PROVIDER', 'giphy'),

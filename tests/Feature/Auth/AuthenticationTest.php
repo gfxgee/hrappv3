@@ -4,10 +4,10 @@ use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Fortify\Features;
 
-test('login screen can be rendered', function () {
+test('login screen redirects to the admin panel login', function () {
     $response = $this->get(route('login'));
 
-    $response->assertOk();
+    $response->assertRedirect(route('filament.admin.auth.login'));
 });
 
 test('users can authenticate using the login screen', function () {

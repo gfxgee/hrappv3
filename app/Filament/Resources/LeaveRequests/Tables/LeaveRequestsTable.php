@@ -5,6 +5,7 @@ namespace App\Filament\Resources\LeaveRequests\Tables;
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
 use App\Models\LeaveRequest;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -30,12 +31,37 @@ class LeaveRequestsTable
                 TextColumn::make('request_type')
                     ->badge()
                     ->formatStateUsing(fn (LeaveType $state): string => $state->label()),
+                TextColumn::make('reason')
+                    ->wrap(),
                 TextColumn::make('start_date')
                     ->date()
                     ->sortable(),
                 TextColumn::make('end_date')
                     ->date()
                     ->sortable(),
+                TextColumn::make('start_time'),
+                TextColumn::make('end_time'),
+                TextColumn::make('duration')
+                    ->label('Total Hours')
+                    ->state(function ($record) {
+                        // 1. Handle missing data
+                        if (! $record->start_time || ! $record->end_time) {
+                            return '--';
+                        }
+
+                        // 2. Parse the time strings
+                        $start = Carbon::parse($record->start_time);
+                        $end = Carbon::parse($record->end_time);
+
+                        // 3. Handle overnight shifts (e.g., 10 PM to 2 AM)
+                        if ($end->lessThan($start)) {
+                            $end->addDay();
+                        }
+
+                        // 4. Return formatted difference
+                        // %h = hours, %i = minutes. Result example: "8h 30m"
+                        return $start->diff($end)->format('%hh %im');
+                    }),
                 TextColumn::make('status')
                     ->badge()
                     ->formatStateUsing(fn (AttendanceStatus $state): string => $state->label())
@@ -43,6 +69,7 @@ class LeaveRequestsTable
                 TextColumn::make('created_at')
                     ->label('Filed')
                     ->dateTime()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->sortable(),
             ])
             ->filters([

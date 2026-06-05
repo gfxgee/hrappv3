@@ -135,7 +135,7 @@
                 rows="2"
                 maxlength="1000"
                 placeholder="Add a comment…"
-                class="block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/20 dark:bg-white/5 dark:text-white"
+                class="block w-full rounded-lg p-3 border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/20 dark:bg-white/5 dark:text-white"
             ></textarea>
 
             <div class="flex items-end justify-between gap-3">

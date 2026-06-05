@@ -14,6 +14,23 @@
             </div>
         </x-filament::section>
     @else
+        {{-- Sort / filter --}}
+        <div class="mb-4 flex flex-wrap gap-2">
+            @foreach (PraiseWall::SORTS as $value => $label)
+                <button
+                    type="button"
+                    wire:click="setSort('{{ $value }}')"
+                    @class([
+                        'rounded-lg px-3 py-1.5 text-sm font-medium transition',
+                        'bg-primary-600 text-white shadow-sm' => $this->sort === $value,
+                        'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10' => $this->sort !== $value,
+                    ])
+                >
+                    {{ $label }}
+                </button>
+            @endforeach
+        </div>
+
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             @foreach ($praises as $praise)
                 @php($recipient = $praise->recipient)
@@ -77,9 +94,34 @@
                             </button>
                         </div>
 
-                        <span class="truncate text-xs text-gray-400">
-                            Submitted by {{ $praise->senderName() }}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            @if ($this->ownsPraise($praise))
+                                <button
+                                    type="button"
+                                    wire:click="mountAction('editPraise', @js(['praise' => $praise->id]))"
+                                    title="Edit praise"
+                                    class="text-gray-400 transition hover:text-primary-500"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+                                        <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
+                                    </svg>
+                                </button>
+                                <button
+                                    type="button"
+                                    wire:click="mountAction('deletePraise', @js(['praise' => $praise->id]))"
+                                    title="Delete praise"
+                                    class="text-gray-400 transition hover:text-danger-500"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+                                        <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            @endif
+
+                            <span class="truncate text-xs text-gray-400">
+                                Submitted by {{ $praise->senderName() }}
+                            </span>
+                        </div>
                     </div>
                 </div>
             @endforeach

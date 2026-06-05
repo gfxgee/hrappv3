@@ -147,7 +147,7 @@ it('lets a manager start a new cycle, archiving the current wall', function () {
     $old = Praise::factory()->create(['praise_session_id' => $cycle->id]);
 
     Livewire::test(PraiseWall::class)
-        ->callAction('startNewCycle', data: ['name' => 'July 2026']);
+        ->callAction('finishCycle', data: ['name' => 'July 2026']);
 
     $new = PraiseSession::where('name', 'July 2026')->firstOrFail();
 
@@ -159,12 +159,12 @@ it('lets a manager start a new cycle, archiving the current wall', function () {
     expect($ids)->not->toContain($old->id);
 });
 
-it('only lets managers start a new cycle', function () {
+it('only lets managers finish a cycle', function () {
     $this->actingAs(praiseUser('hr'));
-    Livewire::test(PraiseWall::class)->assertActionVisible('startNewCycle');
+    Livewire::test(PraiseWall::class)->assertActionVisible('finishCycle');
 
     $this->actingAs(praiseUser());
-    Livewire::test(PraiseWall::class)->assertActionHidden('startNewCycle');
+    Livewire::test(PraiseWall::class)->assertActionHidden('finishCycle');
 });
 
 it('does not let a user praise themselves', function () {
@@ -276,6 +276,143 @@ it('does not let a user edit or delete another user\'s comment', function () {
 
     expect($comment->refresh()->comment)->toBe('theirs')
         ->and(PraiseComment::find($comment->id))->not->toBeNull();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Praise edit / delete (by the sender)
+|--------------------------------------------------------------------------
+*/
+
+it('lets the sender edit their own praise', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create(['user_id' => $me->id, 'message' => 'old message']);
+
+    Livewire::test(PraiseWall::class)
+        ->callAction('editPraise', data: ['message' => 'new message', 'badge_id' => null], arguments: ['praise' => $praise->id]);
+
+    expect($praise->refresh()->message)->toBe('new message');
+});
+
+it('lets the sender delete their own praise and removes its reactions and comments', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create(['user_id' => $me->id]);
+    PraiseComment::create(['praise_id' => $praise->id, 'user_id' => $me->id, 'comment' => 'nice']);
+    PraiseReaction::create(['praise_id' => $praise->id, 'user_id' => $me->id, 'type' => PraiseWall::REACTION]);
+
+    Livewire::test(PraiseWall::class)
+        ->callAction('deletePraise', arguments: ['praise' => $praise->id]);
+
+    expect(Praise::find($praise->id))->toBeNull()
+        ->and(PraiseComment::where('praise_id', $praise->id)->count())->toBe(0)
+        ->and(PraiseReaction::where('praise_id', $praise->id)->count())->toBe(0);
+});
+
+it('does not let a user edit or delete a praise they did not send', function () {
+    $me = praiseUser();
+    $other = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create(['user_id' => $other->id, 'message' => 'theirs']);
+
+    Livewire::test(PraiseWall::class)
+        ->callAction('editPraise', data: ['message' => 'hacked', 'badge_id' => null], arguments: ['praise' => $praise->id])
+        ->callAction('deletePraise', arguments: ['praise' => $praise->id]);
+
+    expect($praise->refresh()->message)->toBe('theirs')
+        ->and(Praise::find($praise->id))->not->toBeNull();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Wall sort / filter & cycle podium
+|--------------------------------------------------------------------------
+*/
+
+it('falls back to recent for an unknown sort value', function () {
+    $this->actingAs(praiseUser());
+
+    Livewire::test(PraiseWall::class)
+        ->call('setSort', 'bogus')
+        ->assertSet('sort', 'recent');
+});
+
+it('sorts the wall feed by most liked', function () {
+    $this->actingAs(praiseUser());
+
+    $low = Praise::factory()->create(['praise_session_id' => null]);
+    $high = Praise::factory()->create(['praise_session_id' => null]);
+
+    PraiseReaction::create(['praise_id' => $high->id, 'user_id' => praiseUser()->id, 'type' => PraiseWall::REACTION]);
+    PraiseReaction::create(['praise_id' => $high->id, 'user_id' => praiseUser()->id, 'type' => PraiseWall::REACTION]);
+
+    $ids = Livewire::test(PraiseWall::class)
+        ->set('sort', 'liked')
+        ->instance()->getPraises()->pluck('id');
+
+    expect($ids->first())->toBe($high->id);
+});
+
+it('sorts the wall feed by most commented', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+
+    $quiet = Praise::factory()->create(['praise_session_id' => null]);
+    $chatty = Praise::factory()->create(['praise_session_id' => null]);
+
+    PraiseComment::create(['praise_id' => $chatty->id, 'user_id' => $me->id, 'comment' => 'a']);
+    PraiseComment::create(['praise_id' => $chatty->id, 'user_id' => $me->id, 'comment' => 'b']);
+
+    $ids = Livewire::test(PraiseWall::class)
+        ->set('sort', 'commented')
+        ->instance()->getPraises()->pluck('id');
+
+    expect($ids->first())->toBe($chatty->id);
+});
+
+it('clusters the wall feed by top recipients', function () {
+    $this->actingAs(praiseUser());
+
+    $popular = praiseUser();
+    $quiet = praiseUser();
+
+    $popularPraise = Praise::factory()->create(['recipient_id' => $popular->id, 'praise_session_id' => null]);
+    $quietPraise = Praise::factory()->create(['recipient_id' => $quiet->id, 'praise_session_id' => null]);
+
+    PraiseReaction::create(['praise_id' => $popularPraise->id, 'user_id' => praiseUser()->id, 'type' => PraiseWall::REACTION]);
+
+    $ids = Livewire::test(PraiseWall::class)
+        ->set('sort', 'top_recipients')
+        ->instance()->getPraises()->pluck('id');
+
+    expect($ids->first())->toBe($popularPraise->id);
+});
+
+it('ranks the cycle podium by total reactions received', function () {
+    $this->actingAs(praiseUser());
+
+    $gold = praiseUser();
+    $silver = praiseUser();
+    $bronze = praiseUser();
+
+    $goldPraise = Praise::factory()->create(['recipient_id' => $gold->id, 'praise_session_id' => null]);
+    $silverPraise = Praise::factory()->create(['recipient_id' => $silver->id, 'praise_session_id' => null]);
+    Praise::factory()->create(['recipient_id' => $bronze->id, 'praise_session_id' => null]);
+
+    foreach (range(1, 3) as $i) {
+        PraiseReaction::create(['praise_id' => $goldPraise->id, 'user_id' => praiseUser()->id, 'type' => PraiseWall::REACTION]);
+    }
+    PraiseReaction::create(['praise_id' => $silverPraise->id, 'user_id' => praiseUser()->id, 'type' => PraiseWall::REACTION]);
+
+    $podium = Livewire::test(PraiseWall::class)->instance()->podiumForSession(null);
+
+    expect($podium[0]['user']->id)->toBe($gold->id)
+        ->and($podium[0]['reactions'])->toBe(3)
+        ->and($podium[1]['user']->id)->toBe($silver->id)
+        ->and($podium[1]['reactions'])->toBe(1)
+        ->and($podium[2]['user']->id)->toBe($bronze->id)
+        ->and($podium[2]['reactions'])->toBe(0);
 });
 
 /*

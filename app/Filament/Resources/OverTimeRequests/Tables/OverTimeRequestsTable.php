@@ -36,6 +36,7 @@ class OverTimeRequestsTable
                     ->sortable(),
                 TextColumn::make('reason')
                     ->limit(40)
+                    ->wrap()
                     ->tooltip(fn (OverTimeRequest $record): ?string => $record->reason),
                 TextColumn::make('status')
                     ->badge()

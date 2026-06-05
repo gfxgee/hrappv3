@@ -68,10 +68,7 @@
             @endif
 
             @if (count($this->gifResults) > 0)
-                <div
-                    class="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto"
-                    x-on:scroll.throttle.250ms="if ($el.scrollTop + $el.clientHeight >= $el.scrollHeight - 48) $wire.loadMoreGifs()"
-                >
+                <div class="mt-2 grid max-h-64 grid-cols-2 gap-2 overflow-y-auto">
                     @foreach ($this->gifResults as $gif)
                         <button
                             type="button"
@@ -84,8 +81,13 @@
                         </button>
                     @endforeach
 
+                    {{-- Sentinel: when it scrolls into view it loads the next page. --}}
                     @if ($this->gifHasMore)
-                        <div wire:loading.flex wire:target="loadMoreGifs" class="col-span-2 items-center justify-center gap-2 py-2 text-xs text-gray-400">
+                        <div
+                            wire:key="gif-load-more"
+                            x-intersect="$wire.loadMoreGifs()"
+                            class="col-span-2 flex items-center justify-center gap-2 py-3 text-xs text-gray-400"
+                        >
                             <x-filament::loading-indicator class="h-4 w-4" />
                             <span>Loading more GIFs…</span>
                         </div>

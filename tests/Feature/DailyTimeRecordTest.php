@@ -1,0 +1,64 @@
+<?php
+
+use App\Filament\Pages\DailyTimeRecord;
+use App\Models\User;
+use Filament\Facades\Filament;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Role;
+
+beforeEach(function () {
+    Filament::setCurrentPanel('admin');
+});
+
+it('renders the daily time record page', function () {
+    $this->actingAs(User::factory()->create(['status' => 'active']));
+
+    Livewire::test(DailyTimeRecord::class)
+        ->assertSuccessful()
+        ->assertSee('Daily Time Record');
+});
+
+it('locks a regular employee to their own record', function () {
+    $me = User::factory()->create(['status' => 'active']);
+    $other = User::factory()->create(['status' => 'active']);
+    $this->actingAs($me);
+
+    $page = Livewire::test(DailyTimeRecord::class);
+
+    expect($page->instance()->employeeOptions())->toHaveCount(1)
+        ->and($page->instance()->canSelectEmployee())->toBeFalse();
+
+    // Even if a different id is forced, it resolves back to the current user.
+    $page->set('employeeId', (string) $other->id);
+    expect($page->instance()->resolveEmployee()->id)->toBe($me->id);
+});
+
+it('lets a manager view any employee', function () {
+    Role::findOrCreate('hr');
+    $hr = User::factory()->create(['status' => 'active']);
+    $hr->assignRole('hr');
+    $employee = User::factory()->create(['status' => 'active']);
+    $this->actingAs($hr);
+
+    $page = Livewire::test(DailyTimeRecord::class)->set('employeeId', (string) $employee->id);
+
+    expect($page->instance()->canSelectEmployee())->toBeTrue()
+        ->and($page->instance()->resolveEmployee()->id)->toBe($employee->id);
+});
+
+it('switches the period with the month shortcuts', function () {
+    $this->actingAs(User::factory()->create(['status' => 'active']));
+
+    Livewire::test(DailyTimeRecord::class)
+        ->call('lastMonth')
+        ->assertSet('from', now()->subMonthNoOverflow()->startOfMonth()->toDateString())
+        ->assertSet('until', now()->subMonthNoOverflow()->endOfMonth()->toDateString());
+});
+
+it('exports the DTR as a CSV download', function () {
+    $this->actingAs(User::factory()->create(['status' => 'active']));
+
+    Livewire::test(DailyTimeRecord::class)
+        ->call('exportCsv')
+        ->assertFileDownloaded();
+});

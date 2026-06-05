@@ -43,6 +43,23 @@ class PraiseWall extends Page
     public const GIF_PER_PAGE = 12;
 
     /**
+     * Active feed sort: recent | liked | commented | top_recipients.
+     */
+    public string $sort = 'recent';
+
+    /**
+     * Allowed feed sorts and their button labels.
+     *
+     * @var array<string, string>
+     */
+    public const SORTS = [
+        'recent' => '📅 Most recent',
+        'liked' => '💖 Most liked',
+        'commented' => '💬 Most commented',
+        'top_recipients' => '🏅 Top recipients',
+    ];
+
+    /**
      * Draft text for the comment composer in the open praise modal.
      */
     public string $newComment = '';
@@ -119,7 +136,7 @@ class PraiseWall extends Page
     {
         return [
             $this->giveAction(),
-            $this->startNewCycleAction(),
+            $this->finishCycleAction(),
         ];
     }
 
@@ -179,18 +196,23 @@ class PraiseWall extends Page
             });
     }
 
-    public function startNewCycleAction(): Action
+    public function finishCycleAction(): Action
     {
-        return Action::make('startNewCycle')
-            ->label('Start New Cycle')
-            ->icon('heroicon-o-arrow-path')
+        return Action::make('finishCycle')
+            ->label('Finish Cycle')
+            ->icon('heroicon-o-trophy')
             ->color('gray')
             ->visible(fn (): bool => $this->canManageCycles())
-            ->modalHeading('Start a new recognition cycle')
-            ->modalDescription('Praises on the wall now will be archived to the current cycle, and the wall starts fresh.')
+            ->modalHeading('Finish cycle & crown the winners')
+            ->modalDescription('Review the podium below, then archive this cycle and start a fresh one.')
+            ->modalContent(fn () => view('filament.praise.podium', [
+                'podium' => $this->podiumForSession(PraiseSession::current()),
+                'cycleName' => PraiseSession::current()?->name,
+            ]))
+            ->modalSubmitActionLabel('Archive & start new cycle')
             ->schema([
                 TextInput::make('name')
-                    ->label('Cycle name')
+                    ->label('New cycle name')
                     ->required()
                     ->maxLength(255)
                     ->default(now()->format('F Y')),
@@ -204,9 +226,52 @@ class PraiseWall extends Page
                 Notification::make()
                     ->success()
                     ->title('New cycle started 🎉')
-                    ->body('The wall is fresh — previous praises are archived.')
+                    ->body('The previous cycle is archived with its winners.')
                     ->send();
             });
+    }
+
+    /**
+     * Switch the feed sort (validated against the allowed set).
+     */
+    public function setSort(string $sort): void
+    {
+        $this->sort = array_key_exists($sort, self::SORTS) ? $sort : 'recent';
+    }
+
+    /**
+     * Rank the recipients of a cycle by total reactions received, then by
+     * praise count. Returns the top entries for the podium / leaderboard.
+     *
+     * @return list<array{rank: int, user: ?User, reactions: int, praises: int}>
+     */
+    public function podiumForSession(?PraiseSession $session, int $limit = 10): array
+    {
+        $rows = Praise::query()
+            ->leftJoin('praise_reactions', 'praise_reactions.praise_id', '=', 'praises.id')
+            ->when(
+                $session !== null,
+                fn ($query) => $query->where('praises.praise_session_id', $session->id),
+                fn ($query) => $query->whereNull('praises.praise_session_id'),
+            )
+            ->groupBy('praises.recipient_id')
+            ->selectRaw('praises.recipient_id, COUNT(DISTINCT praises.id) as praises, COUNT(praise_reactions.id) as reactions')
+            ->orderByDesc('reactions')
+            ->orderByDesc('praises')
+            ->limit($limit)
+            ->get();
+
+        $users = User::query()
+            ->whereIn('id', $rows->pluck('recipient_id'))
+            ->get()
+            ->keyBy('id');
+
+        return $rows->values()->map(fn ($row, int $index): array => [
+            'rank' => $index + 1,
+            'user' => $users->get($row->recipient_id),
+            'reactions' => (int) $row->reactions,
+            'praises' => (int) $row->praises,
+        ])->all();
     }
 
     /**
@@ -219,16 +284,43 @@ class PraiseWall extends Page
     {
         $current = PraiseSession::current();
 
-        return Praise::query()
+        $praises = Praise::query()
             ->with(['sender', 'recipient', 'badge', 'reactions', 'comments.user'])
+            ->withCount(['reactions', 'comments'])
             ->when(
                 $current !== null,
                 fn ($query) => $query->where('praise_session_id', $current->id),
                 fn ($query) => $query->whereNull('praise_session_id'),
             )
             ->latest()
-            ->limit(60)
+            ->limit(100)
             ->get();
+
+        return match ($this->sort) {
+            'liked' => $praises->sortByDesc('reactions_count')->values(),
+            'commented' => $praises->sortByDesc('comments_count')->values(),
+            'top_recipients' => $this->sortByTopRecipients($praises),
+            default => $praises,
+        };
+    }
+
+    /**
+     * Cluster the feed by recipient, ordering recipients by the total reactions
+     * they received in the cycle (matching the podium ranking).
+     *
+     * @param  Collection<int, Praise>  $praises
+     * @return Collection<int, Praise>
+     */
+    protected function sortByTopRecipients(Collection $praises): Collection
+    {
+        $reactionsByRecipient = $praises
+            ->groupBy('recipient_id')
+            ->map(fn (Collection $group): int => $group->sum('reactions_count'));
+
+        return $praises
+            ->sortByDesc(fn (Praise $praise): int => ($reactionsByRecipient[$praise->recipient_id] ?? 0) * 1_000_000
+                + $praise->reactions_count)
+            ->values();
     }
 
     public function toggleReaction(int $praiseId): void
@@ -477,6 +569,88 @@ class PraiseWall extends Page
     public function ownsComment(PraiseComment $comment): bool
     {
         return (int) $comment->user_id === (int) auth()->id();
+    }
+
+    /**
+     * Whether the authenticated user sent (nominated) the given praise.
+     */
+    public function ownsPraise(Praise $praise): bool
+    {
+        return (int) $praise->user_id === (int) auth()->id();
+    }
+
+    /**
+     * Edit a praise you sent — change its badge or message.
+     */
+    public function editPraiseAction(): Action
+    {
+        return Action::make('editPraise')
+            ->modalHeading('Edit praise')
+            ->modalSubmitActionLabel('Save changes')
+            ->fillForm(fn (array $arguments): array => [
+                'badge_id' => $this->loadPraise((int) $arguments['praise'])?->badge_id,
+                'message' => $this->loadPraise((int) $arguments['praise'])?->message,
+            ])
+            ->schema([
+                Select::make('badge_id')
+                    ->label('Badge')
+                    ->options(fn (): array => Badge::active()
+                        ->orderBy('label')
+                        ->get()
+                        ->mapWithKeys(fn (Badge $badge): array => [
+                            $badge->id => trim(($badge->icon ? $badge->icon.' ' : '').$badge->label),
+                        ])
+                        ->all())
+                    ->placeholder('No badge')
+                    ->native(false),
+                Textarea::make('message')
+                    ->label('Why are they awesome?')
+                    ->required()
+                    ->maxLength(1000)
+                    ->hintActions(EnhanceReason::for('praise', 'message')),
+            ])
+            ->action(function (array $arguments, array $data): void {
+                $praise = Praise::find((int) $arguments['praise']);
+
+                if ($praise === null || ! $this->ownsPraise($praise)) {
+                    Notification::make()->danger()->title('You can only edit your own praise')->send();
+
+                    return;
+                }
+
+                $praise->update([
+                    'badge_id' => $data['badge_id'] ?? null,
+                    'message' => $data['message'],
+                ]);
+
+                Notification::make()->success()->title('Praise updated')->send();
+            });
+    }
+
+    /**
+     * Delete a praise you sent, along with its reactions and comments.
+     */
+    public function deletePraiseAction(): Action
+    {
+        return Action::make('deletePraise')
+            ->requiresConfirmation()
+            ->color('danger')
+            ->modalHeading('Delete this praise?')
+            ->modalDescription('This permanently removes the praise along with its reactions and comments.')
+            ->modalSubmitActionLabel('Delete')
+            ->action(function (array $arguments): void {
+                $praise = Praise::find((int) $arguments['praise']);
+
+                if ($praise === null || ! $this->ownsPraise($praise)) {
+                    Notification::make()->danger()->title('You can only delete your own praise')->send();
+
+                    return;
+                }
+
+                $praise->delete();
+
+                Notification::make()->success()->title('Praise deleted')->send();
+            });
     }
 
     /**

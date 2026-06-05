@@ -214,3 +214,33 @@ it('lists a user\'s attendance logs in the relation manager', function () {
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$login, $logout]);
 });
+
+it('filters attendance logs by a date range', function () {
+    $user = User::factory()->create();
+
+    $old = AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web']);
+    $old->forceFill(['created_at' => '2026-06-01 09:00:00'])->save();
+
+    $recent = AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web']);
+    $recent->forceFill(['created_at' => '2026-06-15 09:00:00'])->save();
+
+    Livewire::test(AttendanceLogsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->filterTable('logged_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->assertCanSeeTableRecords([$recent])
+        ->assertCanNotSeeTableRecords([$old]);
+});
+
+it('exports attendance logs as a CSV download', function () {
+    $user = User::factory()->create();
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web']);
+
+    Livewire::test(AttendanceLogsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->callTableAction('export')
+        ->assertFileDownloaded();
+});

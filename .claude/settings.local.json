@@ -15,7 +15,11 @@
       "PowerShell(php artisan tinker --execute \"$u = App\\\\Models\\\\User::find\\(2\\); auth\\(\\)->login\\($u\\); $cr = collect\\(\\(new App\\\\Filament\\\\Pages\\\\FileLeaveRequest\\(\\)\\)->getLeaveCredits\\(\\)\\)->keyBy\\('label'\\); echo json_encode\\(['vacation' => $cr['Vacation Leave'] ?? null], JSON_PRETTY_PRINT\\);\")",
       "Bash(grep -rn \"Enum\\\\\\\\\\\\\\\\Department\\\\|App\\\\\\\\\\\\\\\\Enum\\\\\\\\\\\\\\\\Department\\\\|Department::\" app/ database/)",
       "PowerShell(php artisan migrate --no-interaction 2>&1)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep -nE 'notifications|<body|@filamentScripts|@livewire|\\\\{\\\\{ \\\\$slot|toast' vendor/filament/filament/resources/views/components/layout/base.blade.php)",
+      "Bash(grep -nA20 \"'features'\" config/fortify.php)",
+      "Bash(powershell -NoProfile -Command \"php artisan make:test --pest DtrServiceTest --no-interaction; php artisan make:test --pest DailyTimeRecordTest --no-interaction\")",
+      "Bash(Select-String -Pattern \"created\")"
     ]
   }
 }
