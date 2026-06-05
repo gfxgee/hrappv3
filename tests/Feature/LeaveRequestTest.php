@@ -110,6 +110,38 @@ it('approves a leave request from the resource table', function () {
     expect($leave->refresh()->status)->toBe(AttendanceStatus::APPROVED);
 });
 
+it('lets HR verify an approved leave request', function () {
+    $this->actingAs(userWithRole('hr'));
+    $leave = LeaveRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->callTableAction('verify', $leave);
+
+    expect($leave->refresh()->status)->toBe(AttendanceStatus::APPROVED_AND_VERIFIED);
+});
+
+it('only offers verify once a leave is approved', function () {
+    $this->actingAs(userWithRole('hr'));
+    $pending = LeaveRequest::factory()->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->assertTableActionVisible('approve', $pending)
+        ->assertTableActionHidden('verify', $pending);
+});
+
+it('does not let a team leader verify an approved leave', function () {
+    $department = Department::factory()->create();
+    $leader = User::factory()->create();
+    $leader->ledDepartments()->attach($department);
+    $employee = User::factory()->create(['department_id' => $department->id]);
+    $leave = LeaveRequest::factory()->for($employee)->create(['status' => AttendanceStatus::APPROVED]);
+
+    $this->actingAs($leader);
+
+    Livewire::test(ListLeaveRequests::class)
+        ->assertTableActionHidden('verify', $leave);
+});
+
 it('renders the file leave request page', function () {
     $this->actingAs(User::factory()->create());
 

@@ -4,7 +4,7 @@ namespace App\Enum;
 
 use JsonSerializable;
 
-enum AttendanceStatus : string implements JsonSerializable
+enum AttendanceStatus: string implements JsonSerializable
 {
     case FOR_APPROVAL = 'forapproval';
     case APPROVED = 'approved';
@@ -16,9 +16,10 @@ enum AttendanceStatus : string implements JsonSerializable
     {
         return $this->value;
     }
-    public function label(): string 
+
+    public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::FOR_APPROVAL => 'For Approval',
             self::APPROVED => 'Approved',
             self::CANCELLED => 'Cancelled',
@@ -27,14 +28,14 @@ enum AttendanceStatus : string implements JsonSerializable
         };
     }
 
-    public function color(): string 
+    public function color(): string
     {
-        return match($this) {
+        return match ($this) {
             self::FOR_APPROVAL => 'info',
             self::APPROVED => 'success',
             self::CANCELLED => 'warning',
             self::REJECTED => 'danger',
-            self::APPROVED_AND_VERIFIED => 'primary',
+            self::APPROVED_AND_VERIFIED => 'verified',
         };
     }
 
@@ -44,6 +45,7 @@ enum AttendanceStatus : string implements JsonSerializable
         foreach (self::cases() as $case) {
             $array[$case->value] = $case->label();
         }
+
         return $array;
     }
 }

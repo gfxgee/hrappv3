@@ -3,6 +3,7 @@
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
+use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Filament\Resources\Users\RelationManagers\AttendanceLogsRelationManager;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\AttendanceLog;
@@ -98,6 +99,14 @@ it('renders the edit page', function () {
 
     Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
         ->assertSuccessful();
+});
+
+it('renders the read-only view page that names link to', function () {
+    $user = User::factory()->create(['name' => 'Linked Employee']);
+
+    Livewire::test(ViewUser::class, ['record' => $user->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('Linked Employee');
 });
 
 it('creates a user along with the related user data', function () {

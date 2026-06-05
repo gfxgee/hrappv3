@@ -73,6 +73,25 @@ it('renders the overtime edit page', function () {
     expect(OverTimeRequestResource::getRecordTitle($ot))->toBeString();
 });
 
+it('lets HR verify an approved overtime request', function () {
+    $this->actingAs(overtimeManager('hr'));
+    $ot = OverTimeRequest::factory()->create(['status' => AttendanceStatus::APPROVED]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->callTableAction('verify', $ot);
+
+    expect($ot->refresh()->status)->toBe(AttendanceStatus::APPROVED_AND_VERIFIED);
+});
+
+it('only offers verify once overtime is approved', function () {
+    $this->actingAs(overtimeManager('hr'));
+    $pending = OverTimeRequest::factory()->create(['status' => AttendanceStatus::FOR_APPROVAL]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->assertTableActionVisible('approve', $pending)
+        ->assertTableActionHidden('verify', $pending);
+});
+
 it('bulk-approves selected pending overtime requests and stamps the date', function () {
     $this->actingAs(overtimeManager('hr'));
 

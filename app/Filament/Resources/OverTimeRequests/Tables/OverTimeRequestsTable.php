@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OverTimeRequests\Tables;
 
 use App\Enum\AttendanceStatus;
+use App\Filament\Resources\Users\UserResource;
 use App\Models\OverTimeRequest;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -24,6 +25,10 @@ class OverTimeRequestsTable
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Employee')
+                    ->url(fn (OverTimeRequest $record): ?string => $record->user_id
+                        ? UserResource::getUrl('view', ['record' => $record->user_id])
+                        : null)
+                    ->color('primary')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('request_date')
@@ -75,6 +80,17 @@ class OverTimeRequestsTable
                     ->action(fn (OverTimeRequest $record) => $record->update([
                         'status' => AttendanceStatus::REJECTED->value,
                     ])),
+                Action::make('verify')
+                    ->label('Verify')
+                    ->icon('heroicon-o-shield-check')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Verify this overtime request?')
+                    ->modalDescription('Final HR verification, recorded for payroll/records. This cannot be undone here.')
+                    ->visible(fn (OverTimeRequest $record): bool => $record->status === AttendanceStatus::APPROVED && self::canVerify())
+                    ->action(fn (OverTimeRequest $record) => $record->update([
+                        'status' => AttendanceStatus::APPROVED_AND_VERIFIED->value,
+                    ])),
                 EditAction::make(),
             ])
             ->toolbarActions([
@@ -92,10 +108,51 @@ class OverTimeRequestsTable
                     ->requiresConfirmation()
                     ->deselectRecordsAfterCompletion()
                     ->action(fn (Collection $records) => self::decideMany($records, AttendanceStatus::REJECTED)),
+                BulkAction::make('verifySelected')
+                    ->label('Verify')
+                    ->icon('heroicon-o-shield-check')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->deselectRecordsAfterCompletion()
+                    ->visible(fn (): bool => self::canVerify())
+                    ->action(fn (Collection $records) => self::verifyMany($records)),
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Only HR and super-admins may perform the final verification.
+     */
+    protected static function canVerify(): bool
+    {
+        return (bool) auth()->user()?->hasAnyRole(['superadmin', 'super_admin', 'hr']);
+    }
+
+    /**
+     * Verify every approved record in the selection (final HR step),
+     * skipping any that aren't approved yet.
+     *
+     * @param  Collection<int, OverTimeRequest>  $records
+     */
+    protected static function verifyMany(Collection $records): void
+    {
+        $approved = $records->filter(
+            fn (OverTimeRequest $record): bool => $record->status === AttendanceStatus::APPROVED,
+        );
+
+        $approved->each(fn (OverTimeRequest $record) => $record->update([
+            'status' => AttendanceStatus::APPROVED_AND_VERIFIED->value,
+        ]));
+
+        $skipped = $records->count() - $approved->count();
+
+        Notification::make()
+            ->success()
+            ->title("{$approved->count()} request(s) verified")
+            ->body($skipped > 0 ? "{$skipped} not yet approved and skipped." : null)
+            ->send();
     }
 
     /**

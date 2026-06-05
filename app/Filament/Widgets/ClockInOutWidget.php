@@ -11,11 +11,11 @@ class ClockInOutWidget extends Widget
     protected string $view = 'filament.widgets.clock-in-out-widget';
 
     /**
-     * Span the full dashboard width and render before other widgets.
+     * Two-thirds width on desktop (full on mobile); rendered first.
      */
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = ['default' => 1, 'md' => 2];
 
-    protected static ?int $sort = -2;
+    protected static ?int $sort = -3;
 
     /**
      * How far back to consider a clock-in as "still active" if not yet
