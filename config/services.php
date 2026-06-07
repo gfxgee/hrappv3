@@ -35,6 +35,15 @@ return [
         ],
     ],
 
+    'teams' => [
+        // Power Automate "When an HTTP request is received" endpoint that posts
+        // to a Teams channel. Carries a signature token — keep it in .env only.
+        'flow_url' => env('TEAMS_FLOW_URL'),
+        // Who to @mention for approval when the employee's department has no
+        // team leader set.
+        'default_approver' => env('TEAMS_DEFAULT_APPROVER', 'gee@digitalfeet.com'),
+    ],
+
     'microsoft' => [
         'client_id' => env('MICROSOFT_CLIENT_ID'),
         'client_secret' => env('MICROSOFT_CLIENT_SECRET'),

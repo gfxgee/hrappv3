@@ -218,7 +218,21 @@ it('hides edit and cancel actions once an overtime request is rejected', functio
         ->assertTableActionHidden('cancel', $ot);
 });
 
-it('lets an employee cancel an approved overtime request', function () {
+it('lets an employee cancel a pending overtime request', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $ot = OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::FOR_APPROVAL,
+    ]);
+
+    Livewire::test(FileOverTimeRequest::class)
+        ->callTableAction('cancel', $ot);
+
+    expect($ot->refresh()->status)->toBe(AttendanceStatus::CANCELLED);
+});
+
+it('hides cancel once an overtime request is approved', function () {
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -227,9 +241,7 @@ it('lets an employee cancel an approved overtime request', function () {
     ]);
 
     Livewire::test(FileOverTimeRequest::class)
-        ->callTableAction('cancel', $ot);
-
-    expect($ot->refresh()->status)->toBe(AttendanceStatus::CANCELLED);
+        ->assertTableActionHidden('cancel', $ot);
 });
 
 it('computes approved hours this month and pending hours', function () {

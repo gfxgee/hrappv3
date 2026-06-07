@@ -4,3 +4,55 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+/*
+| Brand the admin sidebar in deep purple (#1e1242) with light text/icons
+| for contrast. Works in both light and dark mode.
+*/
+.fi-sidebar,
+.fi-sidebar-header {
+    background-color: #1e1242;
+    border-color: color-mix(in srgb, white 8%, transparent);
+}
+
+.fi-sidebar-header {
+    box-shadow: none;
+}
+
+.fi-sidebar .fi-sidebar-group-label {
+    color: color-mix(in srgb, white 55%, transparent);
+}
+
+.fi-sidebar .fi-sidebar-item-btn {
+    color: color-mix(in srgb, white 100%, transparent);
+}
+
+.fi-sidebar .fi-sidebar-item-icon {
+    color: color-mix(in srgb, white 70%, transparent);
+}
+
+.fi-sidebar .fi-sidebar-item-btn:hover {
+    background-color: color-mix(in srgb, white 10%, transparent);
+    color: white;
+}
+
+.fi-sidebar .fi-sidebar-item-btn:hover .fi-sidebar-item-icon {
+    color: white;
+}
+
+/* Active item — `fi-active` lives on the <li>, so the button is a descendant. */
+.fi-sidebar .fi-sidebar-item.fi-active .fi-sidebar-item-btn {
+    background-color: color-mix(in srgb, white 14%, transparent);
+    color: white;
+}
+
+.fi-sidebar .fi-sidebar-item.fi-active .fi-sidebar-item-icon {
+    color: white;
+}
+
+/* Sidebar header brand / logo text and collapse control */
+.fi-sidebar-item-label,
+.fi-sidebar-header .fi-logo,
+.fi-sidebar-header .fi-icon-btn {
+    color: white;
+}
