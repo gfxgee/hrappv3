@@ -10,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Enums\FontFamily;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -33,6 +34,7 @@ class UsersTable
                     ->sortable(),
                 TextColumn::make('email')
                     ->label('Email address')
+                    ->fontFamily(FontFamily::Mono)
                     ->searchable(),
                 TextColumn::make('department.name')
                     ->label('Department')
@@ -41,6 +43,7 @@ class UsersTable
                     ->toggleable(),
                 TextColumn::make('job_title')
                     ->searchable()
+                    ->wrap()
                     ->toggleable(),
                 TextColumn::make('status')
                     ->badge()
@@ -55,7 +58,8 @@ class UsersTable
                     ->label('Attendance logs')
                     ->counts('attendanceLogs')
                     ->badge()
-                    ->toggleable(),
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('bio_metric_id')
                     ->label('Biometric ID')
                     ->numeric()
@@ -83,6 +87,8 @@ class UsersTable
                     DeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultPaginationPageOption(50)
+            ->defaultGroup('status');
     }
 }

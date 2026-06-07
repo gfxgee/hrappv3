@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
 use App\Services\RequestNotifier;
+use App\Services\TeamsNotifier;
 use App\Support\TimeOptions;
 use Database\Factories\LeaveRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,23 @@ class LeaveRequest extends Model
         static::created(function (LeaveRequest $request): void {
             if ($request->status === AttendanceStatus::FOR_APPROVAL) {
                 app(RequestNotifier::class)->leaveFiled($request);
+                app(TeamsNotifier::class)->leaveFiled($request);
+            }
+        });
+
+        // Re-notify Teams when the employee cancels or edits a pending request.
+        static::updated(function (LeaveRequest $request): void {
+            if ($request->wasChanged('status')) {
+                if ($request->status === AttendanceStatus::CANCELLED) {
+                    app(TeamsNotifier::class)->leaveCancelled($request);
+                }
+
+                return;
+            }
+
+            if ($request->status === AttendanceStatus::FOR_APPROVAL
+                && $request->wasChanged(['request_type', 'reason', 'start_date', 'end_date', 'start_time', 'end_time'])) {
+                app(TeamsNotifier::class)->leaveEdited($request);
             }
         });
     }

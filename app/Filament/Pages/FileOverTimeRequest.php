@@ -9,8 +9,8 @@ use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Component;
@@ -141,11 +141,7 @@ class FileOverTimeRequest extends Page implements HasTable
                     ->color('warning')
                     ->requiresConfirmation()
                     ->modalHeading('Cancel this overtime request?')
-                    ->visible(fn (OverTimeRequest $record): bool => in_array(
-                        $record->status,
-                        [AttendanceStatus::FOR_APPROVAL, AttendanceStatus::APPROVED],
-                        true,
-                    ))
+                    ->visible(fn (OverTimeRequest $record): bool => $record->status === AttendanceStatus::FOR_APPROVAL)
                     ->action(fn (OverTimeRequest $record) => $record->update([
                         'status' => AttendanceStatus::CANCELLED->value,
                     ])),

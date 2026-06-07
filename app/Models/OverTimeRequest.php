@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enum\AttendanceStatus;
 use App\Services\RequestNotifier;
+use App\Services\TeamsNotifier;
 use Database\Factories\OverTimeRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,23 @@ class OverTimeRequest extends Model
         static::created(function (OverTimeRequest $request): void {
             if ($request->status === AttendanceStatus::FOR_APPROVAL) {
                 app(RequestNotifier::class)->overtimeFiled($request);
+                app(TeamsNotifier::class)->overtimeFiled($request);
+            }
+        });
+
+        // Re-notify Teams when the employee cancels or edits a pending request.
+        static::updated(function (OverTimeRequest $request): void {
+            if ($request->wasChanged('status')) {
+                if ($request->status === AttendanceStatus::CANCELLED) {
+                    app(TeamsNotifier::class)->overtimeCancelled($request);
+                }
+
+                return;
+            }
+
+            if ($request->status === AttendanceStatus::FOR_APPROVAL
+                && $request->wasChanged(['request_date', 'hours', 'reason'])) {
+                app(TeamsNotifier::class)->overtimeEdited($request);
             }
         });
     }
