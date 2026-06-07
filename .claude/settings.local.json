@@ -19,7 +19,15 @@
       "Bash(grep -nE 'notifications|<body|@filamentScripts|@livewire|\\\\{\\\\{ \\\\$slot|toast' vendor/filament/filament/resources/views/components/layout/base.blade.php)",
       "Bash(grep -nA20 \"'features'\" config/fortify.php)",
       "Bash(powershell -NoProfile -Command \"php artisan make:test --pest DtrServiceTest --no-interaction; php artisan make:test --pest DailyTimeRecordTest --no-interaction\")",
-      "Bash(Select-String -Pattern \"created\")"
+      "Bash(Select-String -Pattern \"created\")",
+      "Bash(gh --version)",
+      "PowerShell($p = @\\(\"$env:LOCALAPPDATA\\\\GitHubCLI\\\\gh.exe\",\"$env:ProgramFiles\\\\GitHub CLI\\\\gh.exe\",\"${env:ProgramFiles\\(x86\\)}\\\\GitHub CLI\\\\gh.exe\"\\); $p | ForEach-Object { if \\(Test-Path $_\\) { $_ } }; \\(Get-Command gh.exe -ErrorAction SilentlyContinue\\).Source)",
+      "Bash(grep -vE \"=\\\\\"?\\\\\\\\$\\\\{\")",
+      "PowerShell(echo \"TOKEN set: $\\([bool]\\($env:GH_TOKEN -or $env:GITHUB_TOKEN\\)\\)\"; echo \"=== default base branch ===\"; git remote show origin 2>$null | Select-String \"HEAD branch\"; echo \"=== existing remote branches ===\"; git branch -r | Select-Object -First 10)",
+      "Bash(cd /c/Users/boyge/Herd/hr5)",
+      "Bash(printf '\\\\n# Microsoft Teams notifications via Power Automate \\(HTTP request trigger\\)\\\\nTEAMS_FLOW_URL=\\\\n')",
+      "Bash(printf '\\\\nTEAMS_FLOW_URL=\"https://default78fe3449872c47d88b0a382d3bfbef.e4.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/acf87b4b0d9b42ac863af0508d7b8dea/triggers/manual/paths/invoke?api-version=1&sp=%%2Ftriggers%%2Fmanual%%2Frun&sv=1.0&sig=YIM1Ue0b_ETo6rgY7uONIjE2ZkbmToUWLEY3bzrzwoE\"\\\\n')",
+      "Bash(grep -o '^TEAMS_FLOW_URL=.\\\\{0,70\\\\}' .env)"
     ]
   }
 }
