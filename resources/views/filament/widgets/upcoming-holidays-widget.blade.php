@@ -3,7 +3,7 @@
 @endphp
 
 <x-filament-widgets::widget>
-    <x-filament::section>
+    <x-filament::section collapsible id="upcoming-holidays" :persist-collapsed="true">
         <x-slot name="heading">📅 Upcoming Holidays</x-slot>
 
         @if ($rows->isEmpty())

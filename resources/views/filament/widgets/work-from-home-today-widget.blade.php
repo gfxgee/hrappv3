@@ -3,7 +3,7 @@
 @endphp
 
 <x-filament-widgets::widget>
-    <x-filament::section>
+    <x-filament::section collapsible id="work-from-home-today" :persist-collapsed="true">
         <x-slot name="heading">🏠 Work From Home Today</x-slot>
 
         @if ($rows->isEmpty())
