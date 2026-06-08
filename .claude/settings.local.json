@@ -27,7 +27,20 @@
       "Bash(cd /c/Users/boyge/Herd/hr5)",
       "Bash(printf '\\\\n# Microsoft Teams notifications via Power Automate \\(HTTP request trigger\\)\\\\nTEAMS_FLOW_URL=\\\\n')",
       "Bash(printf '\\\\nTEAMS_FLOW_URL=\"https://default78fe3449872c47d88b0a382d3bfbef.e4.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/acf87b4b0d9b42ac863af0508d7b8dea/triggers/manual/paths/invoke?api-version=1&sp=%%2Ftriggers%%2Fmanual%%2Frun&sv=1.0&sig=YIM1Ue0b_ETo6rgY7uONIjE2ZkbmToUWLEY3bzrzwoE\"\\\\n')",
-      "Bash(grep -o '^TEAMS_FLOW_URL=.\\\\{0,70\\\\}' .env)"
+      "Bash(grep -o '^TEAMS_FLOW_URL=.\\\\{0,70\\\\}' .env)",
+      "Bash(head -c 2000 \"C:/Users/boyge/Downloads/attendance-log-biometrics.xls\")",
+      "Bash(ls vendor/phpoffice)",
+      "Bash(ls vendor/maatwebsite)",
+      "Bash(ls vendor/openspout)",
+      "Bash(grep -iE \"CORP|FP|^[A-Z][a-z]+$\")",
+      "Bash(composer require *)",
+      "PowerShell($env:Path = \"C:\\\\Users\\\\Gee\\\\Documents\\\\_DEV\\\\php-8.3.2;\" + $env:Path; \\(Get-Command php\\).Source; php -v | Select-Object -First 1)",
+      "PowerShell(composer require phpoffice/phpspreadsheet --no-interaction 2>&1)",
+      "PowerShell(php -r \"require 'vendor/autoload.php'; use PhpOffice\\\\PhpSpreadsheet\\\\IOFactory; \\\\$s=IOFactory::load\\('C:/Users/boyge/Downloads/attendance-log-biometrics.xls'\\); \\\\$rows=\\\\$s->getActiveSheet\\(\\)->toArray\\(null,true,false,false\\); echo 'rowcount='.count\\(\\\\$rows\\).PHP_EOL; echo json_encode\\(\\\\$rows[0]\\).PHP_EOL; echo json_encode\\(\\\\$rows[1]\\).PHP_EOL; echo json_encode\\(\\\\$rows[2]\\).PHP_EOL;\")",
+      "PowerShell($b = [System.IO.File]::ReadAllBytes\\('C:/Users/boyge/Downloads/attendance-log-biometrics.xls'\\)[0..15]; \\($b | ForEach-Object { $_.ToString\\('X2'\\) }\\) -join ' ')",
+      "Bash(rm -f _probe.php)",
+      "Bash(ls app/Exceptions)",
+      "PowerShell(php artisan test --compact --% --filter=\"DtrServiceTest|ClockInOutWidgetTest\" 2>&1 | Select-Object -Last 12)"
     ]
   }
 }
