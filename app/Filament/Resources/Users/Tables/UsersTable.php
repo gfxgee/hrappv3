@@ -54,6 +54,10 @@ class UsersTable
                     }),
                 IconColumn::make('active')
                     ->boolean(),
+                TextColumn::make('birthday')
+                    ->label('Birthday')
+                    ->date()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('attendance_logs_count')
                     ->label('Attendance logs')
                     ->counts('attendanceLogs')

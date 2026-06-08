@@ -20,7 +20,10 @@
 
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-medium text-gray-950 dark:text-white">{{ $row['name'] }}</p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $row['date']->format('M j, Y') }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ $row['day'] }}, {{ $row['date']->format('M j, Y') }}
+                                <span class="text-gray-400">·</span> {{ $row['duration'] }}
+                            </p>
                         </div>
 
                         @if ($row['isToday'])

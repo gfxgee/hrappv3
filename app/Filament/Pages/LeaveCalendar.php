@@ -208,6 +208,7 @@ class LeaveCalendar extends Page
     protected function holidaysBetween(Carbon $from, Carbon $to): Collection
     {
         return Holiday::query()
+            ->active()
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->get()
             ->keyBy(fn (Holiday $holiday): string => $holiday->date->toDateString());

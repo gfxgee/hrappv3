@@ -27,11 +27,13 @@ class LeaveCreditService
     public function holidayDates(): array
     {
         return $this->holidayDates ??= Holiday::query()
+            ->active()
             ->orderBy('date')
             ->get(['date'])
             ->map(fn (Holiday $holiday): string => $holiday->date->format('Y-m-d'))
             ->all();
     }
+
     /**
      * The user_data column holding the quota for a leave type, or null when
      * the type is untracked (no quota / unlimited — e.g. WFH, LWOP).

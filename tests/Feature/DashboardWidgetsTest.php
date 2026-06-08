@@ -65,6 +65,30 @@ it('renders the upcoming holidays widget', function () {
     Livewire::test(UpcomingHolidaysWidget::class)->assertSuccessful();
 });
 
+it('hides inactive holidays from the dashboard', function () {
+    Holiday::create(['name' => 'Active Holiday', 'date' => today()->addDays(3)->toDateString(), 'is_active' => true]);
+    Holiday::create(['name' => 'Inactive Holiday', 'date' => today()->addDays(4)->toDateString(), 'is_active' => false]);
+
+    $names = (new UpcomingHolidaysWidget)->holidays()->pluck('name');
+
+    expect($names->contains('Active Holiday'))->toBeTrue()
+        ->and($names->contains('Inactive Holiday'))->toBeFalse();
+});
+
+it('includes the weekday name and duration label for holidays', function () {
+    Holiday::create([
+        'name' => 'Founders Day',
+        'date' => '2026-06-15', // a Monday
+        'is_active' => true,
+        'duration' => 'first_half',
+    ]);
+
+    $row = (new UpcomingHolidaysWidget)->holidays()->firstWhere('name', 'Founders Day');
+
+    expect($row['day'])->toBe('Monday')
+        ->and($row['duration'])->toBe('First half');
+});
+
 it('lists all employees upcoming leaves, excluding past and same-day starts', function () {
     $me = auth()->user();
     $other = User::factory()->create(['status' => 'active']);

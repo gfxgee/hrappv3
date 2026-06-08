@@ -1,6 +1,8 @@
 <?php
 
+use App\Enum\HolidayDuration;
 use App\Filament\Resources\Holidays\HolidayResource;
+use App\Filament\Resources\Holidays\Pages\CreateHoliday;
 use App\Filament\Resources\Holidays\Pages\ListHolidays;
 use App\Models\Holiday;
 use App\Models\User;
@@ -46,7 +48,7 @@ it('renders the holiday list for a manager', function () {
 it('creates a holiday', function () {
     $this->actingAs(holidayManager('hr'));
 
-    Livewire::test(App\Filament\Resources\Holidays\Pages\CreateHoliday::class)
+    Livewire::test(CreateHoliday::class)
         ->fillForm([
             'name' => 'Independence Day',
             'date' => '2026-06-12',
@@ -54,5 +56,27 @@ it('creates a holiday', function () {
         ->call('create')
         ->assertHasNoFormErrors();
 
-    expect(Holiday::where('name', 'Independence Day')->whereDate('date', '2026-06-12')->exists())->toBeTrue();
+    $holiday = Holiday::where('name', 'Independence Day')->whereDate('date', '2026-06-12')->firstOrFail();
+
+    expect($holiday->is_active)->toBeTrue()
+        ->and($holiday->duration)->toBe(HolidayDuration::FULL_DAY);
+});
+
+it('creates a half-day, inactive holiday', function () {
+    $this->actingAs(holidayManager('hr'));
+
+    Livewire::test(CreateHoliday::class)
+        ->fillForm([
+            'name' => 'Half Day',
+            'date' => '2026-12-24',
+            'duration' => HolidayDuration::FIRST_HALF->value,
+            'is_active' => false,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $holiday = Holiday::where('name', 'Half Day')->firstOrFail();
+
+    expect($holiday->duration)->toBe(HolidayDuration::FIRST_HALF)
+        ->and($holiday->is_active)->toBeFalse();
 });

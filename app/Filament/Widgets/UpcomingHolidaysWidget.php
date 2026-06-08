@@ -27,13 +27,14 @@ class UpcomingHolidaysWidget extends Widget
     /**
      * Holidays from today through the window, soonest first.
      *
-     * @return Collection<int, array{name: string, date: Carbon, days: int, isToday: bool}>
+     * @return Collection<int, array{name: string, date: Carbon, day: string, duration: string, days: int, isToday: bool}>
      */
     public function holidays(): Collection
     {
         $today = today();
 
         return Holiday::query()
+            ->active()
             ->whereBetween('date', [
                 $today->toDateString(),
                 $today->copy()->addDays(self::WINDOW_DAYS)->toDateString(),
@@ -44,6 +45,8 @@ class UpcomingHolidaysWidget extends Widget
             ->map(fn (Holiday $holiday): array => [
                 'name' => $holiday->name,
                 'date' => $holiday->date,
+                'day' => $holiday->date->format('l'),
+                'duration' => $holiday->duration?->label() ?? 'Full day',
                 'days' => (int) $today->diffInDays($holiday->date),
                 'isToday' => $holiday->date->isSameDay($today),
             ]);
