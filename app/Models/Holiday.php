@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enum\HolidayDuration;
 use Database\Factories\HolidayFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,6 +26,19 @@ class Holiday extends Model
             'is_active' => 'boolean',
             'duration' => HolidayDuration::class,
         ];
+    }
+
+    /**
+     * Store an empty rich-text description (e.g. "<p></p>") as null so blank
+     * descriptions are consistently treated as "none".
+     *
+     * @return Attribute<string|null, string|null>
+     */
+    protected function description(): Attribute
+    {
+        return Attribute::set(
+            fn (?string $value): ?string => filled(trim(strip_tags((string) $value))) ? $value : null,
+        );
     }
 
     /**

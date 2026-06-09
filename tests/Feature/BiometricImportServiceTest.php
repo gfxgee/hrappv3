@@ -40,6 +40,77 @@ it('parses raw punches from a csv export', function () {
         ->and($punches[0]['punched_at']->format('Y-m-d H:i:s'))->toBe('2025-12-17 10:30:26');
 });
 
+it('parses dash-separated, 2-digit-year, 24-hour dates (Excel-resaved CSV)', function () {
+    // Format Excel writes on "Save As CSV": "M-D-YY H:mm" (no AM/PM, no seconds).
+    $path = writeBiometricCsv([
+        ['Renee', 141, '04-05-26 9:42'],
+        ['Renee', 141, '04-05-26 19:17'],
+    ]);
+
+    $service = app(BiometricImportService::class);
+    $punches = $service->parse($path);
+
+    expect($service->skippedDateRows)->toBe(0)
+        ->and($punches)->toHaveCount(2)
+        ->and($punches[0]['punched_at']->format('Y-m-d H:i'))->toBe('2026-04-05 09:42')
+        ->and($punches[1]['punched_at']->format('Y-m-d H:i'))->toBe('2026-04-05 19:17');
+});
+
+it('parses a file that mixes both date formats as month-first', function () {
+    // Real export: some rows are "MM-DD-YY HH:mm" (Excel-resaved) and others
+    // are the device-native "M/D/YYYY h:mm:ss AM/PM" — all month-day-year.
+    $path = writeBiometricCsv([
+        ['Phamela', 130, '01-05-26 18:12'],
+        ['Phamela', 130, '01-06-26 9:55'],
+        ['Phamela', 130, '01-12-26 18:04'],
+        ['Phamela', 130, '1/13/2026 10:14:26 AM'],
+        ['Phamela', 130, '1/13/2026 6:04:03 PM'],
+        ['Phamela', 130, '1/19/2026 6:11:22 PM'],
+        ['Romeo', 132, '12/18/2025 12:48:27 PM'],
+    ]);
+
+    $service = app(BiometricImportService::class);
+    $punches = $service->parse($path);
+
+    expect($service->skippedDateRows)->toBe(0)
+        ->and($punches)->toHaveCount(7)
+        // dash, 2-digit year, 24-hour → Jan 5 2026 18:12
+        ->and($punches[0]['punched_at']->format('Y-m-d H:i'))->toBe('2026-01-05 18:12')
+        // slash, 4-digit year, AM/PM → Jan 13 2026 10:14
+        ->and($punches[3]['punched_at']->format('Y-m-d H:i'))->toBe('2026-01-13 10:14')
+        ->and($punches[3]['punched_at']->format('s'))->toBe('26')
+        // PM converts correctly
+        ->and($punches[4]['punched_at']->format('Y-m-d H:i'))->toBe('2026-01-13 18:04')
+        // 12/18/2025 stays December (month-first, not day 12 of month 18)
+        ->and($punches[6]['punched_at']->format('Y-m-d H:i'))->toBe('2025-12-18 12:48');
+});
+
+it('detects day-first order from an unambiguous date in the file', function () {
+    // 19 in the first field can only be a day, so the whole file is day-first.
+    $path = writeBiometricCsv([
+        ['Renee', 141, '19-05-26 8:00'],
+        ['Renee', 141, '04-05-26 17:00'],
+    ]);
+
+    $punches = app(BiometricImportService::class)->parse($path);
+
+    // 04-05-26 is therefore the 4th of May, not the 5th of April.
+    expect($punches[1]['punched_at']->format('Y-m-d'))->toBe('2026-05-04');
+});
+
+it('counts rows whose date cannot be parsed', function () {
+    $path = writeBiometricCsv([
+        ['Renee', 141, '04-05-26 9:42'],
+        ['Renee', 141, 'not a date'],
+    ]);
+
+    $service = app(BiometricImportService::class);
+    $punches = $service->parse($path);
+
+    expect($punches)->toHaveCount(1)
+        ->and($service->skippedDateRows)->toBe(1);
+});
+
 it('falls back to the No. column when ID Number is blank', function () {
     $path = tempnam(sys_get_temp_dir(), 'bio').'.csv';
     $handle = fopen($path, 'w');

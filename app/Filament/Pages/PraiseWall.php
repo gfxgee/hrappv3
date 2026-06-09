@@ -193,6 +193,9 @@ class PraiseWall extends Page
                 ]);
 
                 Notification::make()->success()->title('Praise posted 🎉')->send();
+
+                // Celebrate the shout-out with a confetti burst on the wall.
+                $this->dispatch('praise-confetti');
             });
     }
 
@@ -202,6 +205,8 @@ class PraiseWall extends Page
             ->label('Finish Cycle')
             ->icon('heroicon-o-trophy')
             ->color('gray')
+            // Rain confetti the moment the button is clicked (before any submit).
+            ->extraAttributes(['x-on:click' => 'window.fallingConfetti?.()'])
             ->visible(fn (): bool => $this->canManageCycles())
             ->modalHeading('Finish cycle & crown the winners')
             ->modalDescription('Review the podium below, then archive this cycle and start a fresh one.')

@@ -52,6 +52,8 @@ it('creates a holiday', function () {
         ->fillForm([
             'name' => 'Independence Day',
             'date' => '2026-06-12',
+            'emoji' => '🇵🇭',
+            'description' => '<p>Details with a <a href="https://example.com">source link</a>.</p>',
         ])
         ->call('create')
         ->assertHasNoFormErrors();
@@ -59,7 +61,26 @@ it('creates a holiday', function () {
     $holiday = Holiday::where('name', 'Independence Day')->whereDate('date', '2026-06-12')->firstOrFail();
 
     expect($holiday->is_active)->toBeTrue()
-        ->and($holiday->duration)->toBe(HolidayDuration::FULL_DAY);
+        ->and($holiday->duration)->toBe(HolidayDuration::FULL_DAY)
+        ->and($holiday->emoji)->toBe('🇵🇭')
+        ->and($holiday->description)->toContain('source link');
+});
+
+it('creates a holiday without an emoji or description', function () {
+    $this->actingAs(holidayManager('hr'));
+
+    Livewire::test(CreateHoliday::class)
+        ->fillForm([
+            'name' => 'Plain Holiday',
+            'date' => '2026-07-04',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $holiday = Holiday::where('name', 'Plain Holiday')->firstOrFail();
+
+    expect($holiday->emoji)->toBeNull()
+        ->and($holiday->description)->toBeNull();
 });
 
 it('creates a half-day, inactive holiday', function () {

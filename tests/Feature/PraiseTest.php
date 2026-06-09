@@ -116,7 +116,8 @@ it('posts a praise to a teammate, tagging the active session', function () {
             'badge_id' => $badge->id,
             'message' => 'Saved the release!',
         ])
-        ->assertHasNoActionErrors();
+        ->assertHasNoActionErrors()
+        ->assertDispatched('praise-confetti');
 
     $praise = Praise::where('recipient_id', $recipient->id)->firstOrFail();
 
@@ -175,7 +176,8 @@ it('does not let a user praise themselves', function () {
         ->callAction('give', data: [
             'recipient_id' => $me->id,
             'message' => 'I am great',
-        ]);
+        ])
+        ->assertNotDispatched('praise-confetti');
 
     expect(Praise::where('recipient_id', $me->id)->count())->toBe(0);
 });

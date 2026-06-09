@@ -89,6 +89,49 @@ it('includes the weekday name and duration label for holidays', function () {
         ->and($row['duration'])->toBe('First half');
 });
 
+it('includes the emoji in holiday rows', function () {
+    Holiday::create([
+        'name' => 'Christmas Day',
+        'emoji' => '🎄',
+        'date' => today()->addDays(10)->toDateString(),
+        'is_active' => true,
+    ]);
+
+    $row = (new UpcomingHolidaysWidget)->holidays()->firstWhere('name', 'Christmas Day');
+
+    expect($row['emoji'])->toBe('🎄');
+});
+
+it('opens a modal with the holiday details from the dashboard', function () {
+    $holiday = Holiday::create([
+        'name' => 'Founders Day',
+        'emoji' => '🎉',
+        'description' => '<p>Read more at <a href="https://example.com">the source</a>.</p>',
+        'date' => today()->addDays(7)->toDateString(),
+        'is_active' => true,
+    ]);
+
+    Livewire::test(UpcomingHolidaysWidget::class)
+        ->mountAction('viewHoliday', arguments: ['holiday' => $holiday->id])
+        ->assertActionMounted('viewHoliday');
+});
+
+it('renders holiday details with emoji, date and rich-text links', function () {
+    $holiday = Holiday::create([
+        'name' => 'Founders Day',
+        'emoji' => '🎉',
+        'description' => '<p>Read more at <a href="https://example.com">the source</a>.</p>',
+        'date' => '2026-06-16',
+        'is_active' => true,
+    ]);
+
+    $html = view('filament.widgets.holiday-details', ['holiday' => $holiday])->render();
+
+    // Name, emoji and date live in the modal header; the body is just the description.
+    expect($html)->toContain('href="https://example.com"')
+        ->toContain('the source');
+});
+
 it('lists all employees upcoming leaves, excluding past and same-day starts', function () {
     $me = auth()->user();
     $other = User::factory()->create(['status' => 'active']);

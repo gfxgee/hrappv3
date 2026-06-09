@@ -125,6 +125,7 @@ class ImportAttendance extends Page implements HasTable
         try {
             $service = app(BiometricImportService::class);
             $punches = $service->parse($path, pathinfo($data['file'], PATHINFO_EXTENSION));
+            $skipped = $service->skippedDateRows;
             $rows = $service->buildPreview($punches, $this->dedupeMinutes);
         } catch (\RuntimeException $e) {
             Notification::make()->danger()->title('Could not read the file')->body($e->getMessage())->send();
@@ -145,10 +146,20 @@ class ImportAttendance extends Page implements HasTable
 
         $unmatched = collect($rows)->where('status', 'unmatched')->count();
 
+        $notes = [];
+
+        if ($unmatched > 0) {
+            $notes[] = "{$unmatched} row(s) have an unmatched biometric ID — set the employee's bio_metric_id or remove them before committing.";
+        }
+
+        if ($skipped > 0) {
+            $notes[] = "{$skipped} row(s) were skipped because their Date/Time could not be read.";
+        }
+
         Notification::make()
-            ->success()
+            ->{$skipped > 0 ? 'warning' : 'success'}()
             ->title('Parsed '.count($rows).' day(s)')
-            ->body($unmatched > 0 ? "{$unmatched} row(s) have an unmatched biometric ID — set the employee's bio_metric_id or remove them before committing." : 'Review the rows below, then commit.')
+            ->body($notes === [] ? 'Review the rows below, then commit.' : implode(' ', $notes))
             ->send();
     }
 

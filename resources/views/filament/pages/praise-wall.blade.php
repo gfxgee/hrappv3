@@ -129,4 +129,53 @@
     @endif
 
     <x-filament-actions::modals />
+
+    @assets
+        <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+    @endassets
+
+    @script
+        <script>
+            // A celebratory burst from the lower-center — used when a praise is posted.
+            window.boomConfetti = function () {
+                if (typeof confetti !== 'function') return;
+
+                const count = 200;
+                const defaults = { origin: { y: 0.6 }, zIndex: 99999 };
+                const fire = (ratio, opts) => confetti({
+                    ...defaults,
+                    ...opts,
+                    particleCount: Math.floor(count * ratio),
+                });
+
+                fire(0.25, { spread: 26, startVelocity: 55 });
+                fire(0.2, { spread: 60 });
+                fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+                fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+                fire(0.1, { spread: 120, startVelocity: 45 });
+            };
+
+            // A gentle shower from the top — used when finishing a cycle.
+            window.fallingConfetti = function () {
+                if (typeof confetti !== 'function') return;
+
+                const end = Date.now() + 2500;
+                (function frame() {
+                    confetti({
+                        particleCount: 4,
+                        startVelocity: 0,
+                        ticks: 220,
+                        gravity: 0.6,
+                        spread: 80,
+                        zIndex: 99999,
+                        origin: { x: Math.random(), y: -0.1 },
+                    });
+
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                })();
+            };
+
+            $wire.on('praise-confetti', () => window.boomConfetti());
+        </script>
+    @endscript
 </x-filament-panels::page>

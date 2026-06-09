@@ -33,6 +33,9 @@ class BiometricImportService
 
     public const DEVICE = 'biometric';
 
+    /** Count of non-blank rows whose Date/Time could not be parsed in the last parse(). */
+    public int $skippedDateRows = 0;
+
     /**
      * Parse an uploaded export file into raw punch rows.
      *
@@ -123,14 +126,24 @@ class BiometricImportService
             throw new RuntimeException('Could not find an "ID Number" (or "No.") column in the file.');
         }
 
+        // Decide month-first vs day-first once for the whole file, since a
+        // short date like "04-05-26" is otherwise ambiguous.
+        $dayFirst = $this->detectDayFirst(array_column($matrix, $columns['datetime']));
+
         $punches = [];
+        $this->skippedDateRows = 0;
 
         foreach ($matrix as $row) {
             $rawDate = $row[$columns['datetime']] ?? null;
-            $punchedAt = $this->parseDateTime($rawDate);
+            $punchedAt = $this->parseDateTime($rawDate, $dayFirst);
 
             if ($punchedAt === null) {
-                continue; // blank or unparseable row — skip silently
+                // Count non-blank rows we couldn't parse so the reviewer is told.
+                if (filled($rawDate)) {
+                    $this->skippedDateRows++;
+                }
+
+                continue;
             }
 
             // Prefer "ID Number"; fall back to "No." when the device left it
@@ -196,10 +209,16 @@ class BiometricImportService
     }
 
     /**
-     * Parse a cell into a Carbon instance, tolerating the device's string
-     * formats and PhpSpreadsheet's numeric Excel serials.
+     * Parse a cell into a Carbon instance, tolerating the various string
+     * formats the device and Excel produce, plus numeric Excel serials.
+     *
+     * Parsing is done by explicit regex rather than Carbon::createFromFormat,
+     * which matches too leniently (e.g. it would read "26" as the year 0026 for
+     * a "Y" token). Exports vary by separator (/ or -), year width (2 or 4),
+     * clock (12- or 24-hour), and optional seconds. $dayFirst chooses day/month
+     * order for otherwise-ambiguous short dates.
      */
-    protected function parseDateTime(mixed $value): ?Carbon
+    protected function parseDateTime(mixed $value, bool $dayFirst = false): ?Carbon
     {
         if ($value === null || $value === '') {
             return null;
@@ -211,19 +230,90 @@ class BiometricImportService
 
         $value = trim((string) $value);
 
-        foreach (['n/j/Y g:i:s A', 'n/j/Y g:i A', 'n/j/Y H:i:s', 'Y-m-d H:i:s', 'Y-m-d H:i'] as $format) {
-            $parsed = Carbon::createFromFormat($format, $value);
+        $pattern = '#^(\d{1,4})[-/](\d{1,2})[-/](\d{1,4})[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?$#';
 
-            if ($parsed !== false) {
-                return $parsed;
-            }
+        if (! preg_match($pattern, $value, $m)) {
+            return null;
+        }
+
+        [$year, $month, $day] = $this->resolveYmd($m[1], (int) $m[2], (int) $m[3], $dayFirst);
+
+        $hour = (int) $m[4];
+        $minute = (int) $m[5];
+        $second = ($m[6] ?? '') !== '' ? (int) $m[6] : 0;
+
+        $meridiem = strtoupper($m[7] ?? '');
+
+        if ($meridiem === 'PM' && $hour < 12) {
+            $hour += 12;
+        } elseif ($meridiem === 'AM' && $hour === 12) {
+            $hour = 0;
+        }
+
+        if ($month < 1 || $month > 12 || $day < 1 || $day > 31 || $hour > 23 || $minute > 59 || $second > 59) {
+            return null;
         }
 
         try {
-            return Carbon::parse($value);
+            return Carbon::create($year, $month, $day, $hour, $minute, $second);
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Resolve the three date fields into [year, month, day].
+     *
+     * A 4-digit first field means ISO order (Y-m-d). Otherwise the third field
+     * is the year (2-digit years pivot into the 2000s) and the first two are
+     * month/day — order taken from any unambiguous value (> 12), else $dayFirst.
+     *
+     * @return array{0: int, 1: int, 2: int}
+     */
+    protected function resolveYmd(string $first, int $second, int $third, bool $dayFirst): array
+    {
+        if (strlen($first) === 4) {
+            return [(int) $first, $second, $third];
+        }
+
+        $year = $third < 100 ? $third + 2000 : $third;
+        $a = (int) $first;
+
+        [$month, $day] = match (true) {
+            $a > 12 => [$second, $a],     // first field can only be a day
+            $second > 12 => [$a, $second], // second field can only be a day
+            $dayFirst => [$second, $a],
+            default => [$a, $second],
+        };
+
+        return [$year, $month, $day];
+    }
+
+    /**
+     * Decide whether short dates in the file are day-first by looking for an
+     * unambiguous row (a first field > 12 means day-first; a second field > 12
+     * means month-first). Defaults to month-first — the device's native order
+     * (e.g. "12/16/2025") — when every short date is ambiguous.
+     *
+     * @param  list<mixed>  $rawDates
+     */
+    protected function detectDayFirst(array $rawDates): bool
+    {
+        foreach ($rawDates as $raw) {
+            if (! is_string($raw) || ! preg_match('/^\s*(\d{1,2})[-\/](\d{1,2})[-\/]/', $raw, $m)) {
+                continue;
+            }
+
+            if ((int) $m[1] > 12) {
+                return true;  // first field can only be a day
+            }
+
+            if ((int) $m[2] > 12) {
+                return false; // second field can only be a day → month is first
+            }
+        }
+
+        return false;
     }
 
     /**
