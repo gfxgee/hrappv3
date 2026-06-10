@@ -6,6 +6,7 @@ use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
 use App\Services\RequestNotifier;
 use App\Services\TeamsNotifier;
+use App\Settings\GeneralSettings;
 use App\Support\TimeOptions;
 use Database\Factories\LeaveRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -91,7 +92,7 @@ class LeaveRequest extends Model
         }
 
         /** @var list<int> $workingDays */
-        $workingDays = config('leave.working_days', [1, 2, 3, 4, 5]);
+        $workingDays = app(GeneralSettings::class)->workingDays;
         $holidays = array_flip($holidayDates);
 
         $start = $this->start_date->startOfDay();

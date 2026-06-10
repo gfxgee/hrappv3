@@ -8,6 +8,7 @@ use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
 use App\Models\UserData;
+use App\Settings\GeneralSettings;
 use App\Support\TimeOptions;
 
 class LeaveCreditService
@@ -57,11 +58,13 @@ class LeaveCreditService
      */
     public function workingHoursFor(?UserData $userData): float
     {
+        $default = app(GeneralSettings::class)->standardWorkingHours;
+
         if ($userData === null) {
-            return 8.0;
+            return $default;
         }
 
-        return TimeOptions::durationHours($userData->time_in, $userData->time_out) ?? 8.0;
+        return TimeOptions::durationHours($userData->time_in, $userData->time_out) ?? $default;
     }
 
     /**

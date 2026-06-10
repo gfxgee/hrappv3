@@ -10,6 +10,7 @@ use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
@@ -557,7 +558,7 @@ it('excludes holidays from the working-day count', function () {
 });
 
 it('respects a configurable working-day set', function () {
-    config()->set('leave.working_days', [1, 2, 3, 4, 5, 6]); // include Saturday
+    GeneralSettings::fake(['workingDays' => [1, 2, 3, 4, 5, 6]]); // include Saturday
 
     $leave = makeLeave([
         'start_date' => '2026-06-06', // Saturday

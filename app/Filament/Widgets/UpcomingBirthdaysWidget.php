@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -17,12 +18,18 @@ class UpcomingBirthdaysWidget extends Widget
 
     protected static ?int $sort = -2;
 
-    /** How far ahead to look for birthdays. */
+    /** Default look-ahead window (days), seeded into settings. */
     public const WINDOW_DAYS = 45;
 
     public static function canView(): bool
     {
         return auth()->check();
+    }
+
+    /** Configured look-ahead window in days. */
+    public function windowDays(): int
+    {
+        return app(GeneralSettings::class)->birthdayWindowDays;
     }
 
     /**
@@ -65,7 +72,7 @@ class UpcomingBirthdaysWidget extends Widget
                 ];
             })
             ->filter()
-            ->filter(fn (array $row): bool => $row['days'] <= self::WINDOW_DAYS)
+            ->filter(fn (array $row): bool => $row['days'] <= $this->windowDays())
             ->sortBy('days')
             ->take(6)
             ->values();

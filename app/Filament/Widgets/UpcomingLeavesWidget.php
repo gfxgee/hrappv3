@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enum\AttendanceStatus;
 use App\Models\LeaveRequest;
+use App\Settings\GeneralSettings;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Collection;
 
@@ -15,12 +16,18 @@ class UpcomingLeavesWidget extends Widget
 
     protected static ?int $sort = 1;
 
-    /** How far ahead to look for upcoming leaves. */
+    /** Default look-ahead window (days), seeded into settings. */
     public const WINDOW_DAYS = 60;
 
     public static function canView(): bool
     {
         return auth()->check();
+    }
+
+    /** Configured look-ahead window in days. */
+    public function windowDays(): int
+    {
+        return app(GeneralSettings::class)->leaveWindowDays;
     }
 
     /**
@@ -41,7 +48,7 @@ class UpcomingLeavesWidget extends Widget
                 AttendanceStatus::APPROVED_AND_VERIFIED->value,
             ])
             ->whereDate('start_date', '>', $today)
-            ->whereDate('start_date', '<=', $today->copy()->addDays(self::WINDOW_DAYS))
+            ->whereDate('start_date', '<=', $today->copy()->addDays($this->windowDays()))
             ->orderBy('start_date')
             ->take(8)
             ->get()

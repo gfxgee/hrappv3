@@ -8,6 +8,7 @@ use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -16,16 +17,19 @@ use Illuminate\Support\Collection;
  * Builds a Daily Time Record (DTR) for an employee over a date range from
  * their attendance logs, schedule, approved overtime, leave, and holidays.
  *
- * Assumes a single clock-in / clock-out per day; a fixed lunch break is
- * deducted from worked hours once the gross span exceeds the threshold.
+ * Assumes a single clock-in / clock-out per day; a lunch break (configurable
+ * via settings) is deducted from worked hours once the gross span exceeds the
+ * threshold.
  */
 class DtrService
 {
-    /** Hours deducted for lunch once the worked span exceeds the threshold. */
+    /** Default lunch hours, seeded into settings. */
     public const LUNCH_HOURS = 1.0;
 
-    /** Gross worked hours above which the lunch break is deducted. */
+    /** Default gross-hours threshold above which lunch is deducted, seeded into settings. */
     public const LUNCH_THRESHOLD_HOURS = 5.0;
+
+    public function __construct(protected GeneralSettings $settings) {}
 
     /**
      * @return array{
@@ -43,7 +47,7 @@ class DtrService
         }
 
         /** @var list<int> $workingDays */
-        $workingDays = config('leave.working_days', [1, 2, 3, 4, 5]);
+        $workingDays = $this->settings->workingDays;
 
         $logsByDate = AttendanceLog::query()
             ->where('user_id', $user->id)
@@ -91,7 +95,7 @@ class DtrService
 
             if ($in && $out) {
                 $gross = abs($in->diffInMinutes($out)) / 60;
-                $hours = max(0.0, round($gross >= self::LUNCH_THRESHOLD_HOURS ? $gross - self::LUNCH_HOURS : $gross, 2));
+                $hours = max(0.0, round($gross >= $this->settings->lunchThresholdHours ? $gross - $this->settings->lunchHours : $gross, 2));
 
                 if (filled($userData?->time_in)) {
                     $scheduledIn = Carbon::parse($key.' '.$userData->time_in);

@@ -8,6 +8,7 @@ use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
 use App\Services\DtrService;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\Carbon;
 
 function logAt(User $user, string $type, string $at): void
@@ -33,6 +34,35 @@ it('computes worked hours, late, and present status for a worked day', function 
         ->and($row['undertime'])->toBe(0)
         ->and($data['totals']['present'])->toBe(1)
         ->and($data['totals']['hours'])->toBe(7.5);
+});
+
+it('uses the configured lunch settings when computing hours', function () {
+    // No lunch deduction at all.
+    GeneralSettings::fake(['lunchHours' => 0.0, 'lunchThresholdHours' => 5.0]);
+
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '09:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-06-01 09:00:00');
+    logAt($user, 'clockout', '2026-06-01 18:00:00'); // 9h gross span
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['hours'])->toBe(9.0); // full span, no lunch removed
+});
+
+it('deducts a configurable half-hour lunch above the threshold', function () {
+    GeneralSettings::fake(['lunchHours' => 0.5, 'lunchThresholdHours' => 5.0]);
+
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '09:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-06-01 09:00:00');
+    logAt($user, 'clockout', '2026-06-01 18:00:00'); // 9h gross
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['hours'])->toBe(8.5); // 9h − 0.5h lunch
 });
 
 it('records undertime when clocking out early', function () {

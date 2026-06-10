@@ -11,6 +11,7 @@ use App\Models\PraiseSession;
 use App\Models\User;
 use App\Services\GifSearch;
 use App\Services\ReasonEnhancer;
+use App\Settings\GeneralSettings;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -38,9 +39,15 @@ class PraiseWall extends Page
     protected const CYCLE_MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
 
     /**
-     * How many GIFs to fetch per page (used for infinite scroll).
+     * Default GIFs to fetch per page (used for infinite scroll), seeded into settings.
      */
     public const GIF_PER_PAGE = 12;
+
+    /** Configured number of GIFs to fetch per page. */
+    public function gifPerPage(): int
+    {
+        return app(GeneralSettings::class)->praiseGifPerPage;
+    }
 
     /**
      * Active feed sort: recent | liked | commented | top_recipients.
@@ -389,11 +396,11 @@ class PraiseWall extends Page
             return;
         }
 
-        $page = app(GifSearch::class)->search($this->gifQuery, self::GIF_PER_PAGE, 0);
+        $page = app(GifSearch::class)->search($this->gifQuery, $this->gifPerPage(), 0);
 
         $this->gifResults = $page;
         $this->gifOffset = count($page);
-        $this->gifHasMore = count($page) === self::GIF_PER_PAGE;
+        $this->gifHasMore = count($page) === $this->gifPerPage();
     }
 
     /**
@@ -405,7 +412,7 @@ class PraiseWall extends Page
             return;
         }
 
-        $page = app(GifSearch::class)->search($this->gifQuery, self::GIF_PER_PAGE, $this->gifOffset);
+        $page = app(GifSearch::class)->search($this->gifQuery, $this->gifPerPage(), $this->gifOffset);
 
         // Skip IDs already shown, in case the provider overlaps pages.
         $existingIds = collect($this->gifResults)->pluck('id')->all();
@@ -416,7 +423,7 @@ class PraiseWall extends Page
 
         $this->gifResults = array_merge($this->gifResults, $fresh);
         $this->gifOffset += count($page);
-        $this->gifHasMore = count($page) === self::GIF_PER_PAGE;
+        $this->gifHasMore = count($page) === $this->gifPerPage();
     }
 
     /**

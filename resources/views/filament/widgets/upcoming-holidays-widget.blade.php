@@ -8,7 +8,7 @@
 
         @if ($rows->isEmpty())
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                No holidays in the next {{ \App\Filament\Widgets\UpcomingHolidaysWidget::WINDOW_DAYS }} days.
+                No holidays in the next {{ $this->windowDays() }} days.
             </p>
         @else
             <ul class="space-y-3">

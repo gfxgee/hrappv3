@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "filament/filament": "5.6",
+        "filament/spatie-laravel-settings-plugin": "^5.6",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/chisel": "^0.1.0",
         "laravel/fortify": "^1.37.2",
@@ -18,7 +19,8 @@
         "phpoffice/phpspreadsheet": "^5.8",
         "prism-php/prism": "^0.100.1",
         "socialiteproviders/microsoft": "^4.9",
-        "spatie/laravel-permission": "*"
+        "spatie/laravel-permission": "*",
+        "spatie/laravel-settings": "^3.9"
     },
     "require-dev": {
         "fakerphp/faker": "^1.24",

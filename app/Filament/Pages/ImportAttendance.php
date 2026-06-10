@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Services\BiometricImportService;
+use App\Settings\GeneralSettings;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -55,6 +56,11 @@ class ImportAttendance extends Page implements HasTable
 
     /** Minutes within which repeated scans are collapsed as double-punches. */
     public int $dedupeMinutes = BiometricImportService::DEFAULT_DEDUPE_MINUTES;
+
+    public function mount(): void
+    {
+        $this->dedupeMinutes = app(GeneralSettings::class)->biometricDedupeMinutes;
+    }
 
     public static function canAccess(): bool
     {

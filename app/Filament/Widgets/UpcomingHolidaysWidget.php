@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Holiday;
+use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -26,12 +27,18 @@ class UpcomingHolidaysWidget extends Widget implements HasActions, HasSchemas
 
     protected static ?int $sort = 0;
 
-    /** How far ahead to look for holidays. */
+    /** Default look-ahead window (days), seeded into settings. */
     public const WINDOW_DAYS = 90;
 
     public static function canView(): bool
     {
         return auth()->check();
+    }
+
+    /** Configured look-ahead window in days. */
+    public function windowDays(): int
+    {
+        return app(GeneralSettings::class)->holidayWindowDays;
     }
 
     /**
@@ -47,7 +54,7 @@ class UpcomingHolidaysWidget extends Widget implements HasActions, HasSchemas
             ->active()
             ->whereBetween('date', [
                 $today->toDateString(),
-                $today->copy()->addDays(self::WINDOW_DAYS)->toDateString(),
+                $today->copy()->addDays($this->windowDays())->toDateString(),
             ])
             ->orderBy('date')
             ->take(6)

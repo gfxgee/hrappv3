@@ -8,7 +8,7 @@
 
         @if ($rows->isEmpty())
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                No upcoming leaves in the next {{ \App\Filament\Widgets\UpcomingLeavesWidget::WINDOW_DAYS }} days.
+                No upcoming leaves in the next {{ $this->windowDays() }} days.
             </p>
         @else
             <ul class="divide-y divide-gray-100 dark:divide-white/10">
