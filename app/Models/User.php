@@ -39,6 +39,21 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
 
     /**
+     * Roles with HR/admin-level access across the app.
+     *
+     * @var list<string>
+     */
+    public const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+
+    /**
+     * Whether the user holds an HR/admin-level role.
+     */
+    public function isManager(): bool
+    {
+        return $this->hasAnyRole(self::MANAGER_ROLES);
+    }
+
+    /**
      * Whether this user may access the Filament panel. The panel is the
      * employee self-service portal, so every active employee gets in;
      * per-resource role checks govern what they can actually do.

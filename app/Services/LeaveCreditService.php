@@ -86,8 +86,9 @@ class LeaveCreditService
     /**
      * Days already consumed for a leave type (active requests only).
      * Pass $excludeId to ignore a specific request, e.g. the one being edited.
+     * Pass $year to count only requests starting in that calendar year.
      */
-    public function usedDays(User $user, LeaveType $type, ?int $excludeId = null): float
+    public function usedDays(User $user, LeaveType $type, ?int $excludeId = null, ?int $year = null): float
     {
         $workingHours = $this->workingHoursFor($user->userData);
 
@@ -98,6 +99,7 @@ class LeaveCreditService
             ->where('request_type', $type->value)
             ->whereNotIn('status', [AttendanceStatus::REJECTED->value, AttendanceStatus::CANCELLED->value])
             ->when($excludeId !== null, fn ($query) => $query->where('id', '!=', $excludeId))
+            ->when($year !== null, fn ($query) => $query->whereYear('start_date', $year))
             ->get()
             ->sum(fn (LeaveRequest $request): float => $request->durationInDays($workingHours, $holidays));
     }
