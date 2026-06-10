@@ -38,6 +38,17 @@ it('denies team leaders and regular users access to the holiday resource', funct
     expect(HolidayResource::canAccess())->toBeFalse();
 });
 
+it('badges the count of active holidays in the navigation', function () {
+    $this->actingAs(holidayManager('hr'));
+
+    expect(HolidayResource::getNavigationBadge())->toBeNull();
+
+    Holiday::factory()->count(2)->create(['is_active' => true]);
+    Holiday::factory()->create(['is_active' => false]);
+
+    expect(HolidayResource::getNavigationBadge())->toBe('2');
+});
+
 it('renders the holiday list for a manager', function () {
     $this->actingAs(holidayManager('hr'));
     Holiday::factory()->count(3)->create();

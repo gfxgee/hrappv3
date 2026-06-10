@@ -40,6 +40,21 @@ class HolidayResource extends Resource
         return $user !== null && $user->hasAnyRole(static::MANAGER_ROLES);
     }
 
+    /**
+     * Count of active holidays, hidden when there are none.
+     */
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Holiday::query()->active()->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Active holidays';
+    }
+
     public static function form(Schema $schema): Schema
     {
         return HolidayForm::configure($schema);
