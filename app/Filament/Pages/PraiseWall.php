@@ -32,7 +32,9 @@ class PraiseWall extends Page
 
     protected static ?string $title = 'Praise Wall';
 
-    protected static ?int $navigationSort = -1;
+    protected static string|\UnitEnum|null $navigationGroup = 'My Workspace';
+
+    protected static ?int $navigationSort = 0;
 
     public const REACTION = '❤️';
 

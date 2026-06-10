@@ -44,6 +44,14 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
+            // Sidebar group order; ungrouped items (Dashboard, HR Overview) stay on top.
+            ->navigationGroups([
+                'My Workspace',
+                'HR Management',
+                'Recognition',
+                'Access Control',
+                'Settings',
+            ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([
                 EncryptCookies::class,

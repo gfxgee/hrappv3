@@ -41,7 +41,7 @@ class EmployeeStatsWidget extends StatsOverviewWidget
             $this->leaveStat($user, LeaveType::VACATION, '🌴 Leave left'),
             $this->leaveStat($user, LeaveType::SICK, '🤒 Sick days'),
             $this->overtimeStat($user),
-            $this->nextDayOffStat($user),
+            // $this->nextDayOffStat($user),
         ];
     }
 

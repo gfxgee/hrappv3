@@ -5,6 +5,7 @@ namespace App\Filament\Widgets\Employee;
 use App\Filament\Widgets\Concerns\ShowsHolidayDetails;
 use App\Models\Holiday;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Carbon\CarbonInterface;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -31,11 +32,19 @@ class ComingUpWidget extends Widget implements HasActions, HasSchemas
 
     protected static ?int $sort = 1;
 
-    /** Days ahead to look; the employee dashboard uses 14, HR Overview 7. */
-    public int $windowDays = 14;
+    /**
+     * Days ahead to look. Defaults to the configurable "Coming up window"
+     * setting; the HR Overview overrides it with a fixed 7-day week view.
+     */
+    public ?int $windowDays = null;
 
     /** Max entries shown. */
     public const LIMIT = 8;
+
+    public function mount(): void
+    {
+        $this->windowDays ??= app(GeneralSettings::class)->comingUpWindowDays;
+    }
 
     public static function canView(): bool
     {

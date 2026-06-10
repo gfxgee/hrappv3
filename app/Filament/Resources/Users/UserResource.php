@@ -23,6 +23,10 @@ class UserResource extends Resource
     // Change the sidebar navigation text here
     protected static ?string $navigationLabel = 'Employees';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'HR Management';
+
+    protected static ?int $navigationSort = 1;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static ?string $recordTitleAttribute = 'name';

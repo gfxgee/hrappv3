@@ -44,6 +44,10 @@ class FileLeaveRequest extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'File Leave';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'My Workspace';
+
+    protected static ?int $navigationSort = 2;
+
     /**
      * @var array<string, mixed>|null
      */

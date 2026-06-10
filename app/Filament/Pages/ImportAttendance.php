@@ -39,6 +39,10 @@ class ImportAttendance extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'Import Attendance';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'HR Management';
+
+    protected static ?int $navigationSort = 6;
+
     protected static ?string $title = 'Import Attendance';
 
     /** Roles allowed to import attendance. */

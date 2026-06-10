@@ -37,6 +37,10 @@ class FileOverTimeRequest extends Page implements HasTable
 
     protected static ?string $navigationLabel = 'File Overtime';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'My Workspace';
+
+    protected static ?int $navigationSort = 3;
+
     /**
      * @var array<string, mixed>|null
      */

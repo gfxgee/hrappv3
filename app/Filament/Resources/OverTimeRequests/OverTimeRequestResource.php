@@ -27,6 +27,10 @@ class OverTimeRequestResource extends Resource
 
     protected static ?string $navigationLabel = 'Overtime Requests';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'HR Management';
+
+    protected static ?int $navigationSort = 4;
+
     /**
      * Number of overtime requests awaiting approval (scoped to what this user manages).
      */

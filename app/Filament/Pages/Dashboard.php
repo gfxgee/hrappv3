@@ -73,9 +73,10 @@ class Dashboard extends BaseDashboard
             ['label' => 'Request leave', 'emoji' => '🗓️', 'url' => FileLeaveRequest::getUrl()],
             ['label' => 'Log overtime', 'emoji' => '⏱️', 'url' => FileOverTimeRequest::getUrl()],
             ['label' => 'Give praise', 'emoji' => '✨', 'url' => PraiseWall::getUrl()],
-            filled($profileUrl = Filament::getProfileUrl())
-                ? ['label' => 'My profile', 'emoji' => '👤', 'url' => $profileUrl]
-                : null,
+            ['label' => 'DTR', 'emoji' => '📝', 'url' => DailyTimeRecord::getUrl()],
+            // filled($profileUrl = Filament::getProfileUrl())
+            //     ? ['label' => 'My profile', 'emoji' => '👤', 'url' => $profileUrl]
+            //     : null,
         ]));
     }
 }

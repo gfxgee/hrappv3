@@ -25,6 +25,10 @@ class LeaveRequestResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
+    protected static string|\UnitEnum|null $navigationGroup = 'HR Management';
+
+    protected static ?int $navigationSort = 3;
+
     /**
      * Number of requests awaiting approval (scoped to what this user manages).
      */

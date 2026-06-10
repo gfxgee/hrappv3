@@ -74,14 +74,9 @@ class ManageGeneralSettings extends SettingsPage
                 Tab::make('Dashboard')
                     ->icon(Heroicon::OutlinedRectangleGroup)
                     ->schema([
-                        TextInput::make('birthdayWindowDays')
-                            ->label('Upcoming birthdays window')
-                            ->numeric()->minValue(1)->maxValue(366)->suffix('days')->required(),
-                        TextInput::make('holidayWindowDays')
-                            ->label('Upcoming holidays window')
-                            ->numeric()->minValue(1)->maxValue(366)->suffix('days')->required(),
-                        TextInput::make('leaveWindowDays')
-                            ->label('Upcoming leaves window')
+                        TextInput::make('comingUpWindowDays')
+                            ->label('Coming up window')
+                            ->helperText('How far ahead the dashboard\'s "Coming up" list looks for birthdays, anniversaries, and holidays. The HR Overview always shows the next 7 days.')
                             ->numeric()->minValue(1)->maxValue(366)->suffix('days')->required(),
                     ]),
                 Tab::make('Import')

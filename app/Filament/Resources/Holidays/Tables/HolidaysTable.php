@@ -23,6 +23,8 @@ class HolidaysTable
                     ->sortable(),
                 TextColumn::make('name')
                     ->searchable(),
+                TextColumn::make('emoji')
+                    ->searchable(),
                 TextColumn::make('duration')
                     ->badge()
                     ->formatStateUsing(fn (HolidayDuration $state): string => $state->label()),

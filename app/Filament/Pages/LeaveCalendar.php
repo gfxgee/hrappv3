@@ -24,6 +24,10 @@ class LeaveCalendar extends Page
 
     protected static ?string $navigationLabel = 'Leave Calendar';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'My Workspace';
+
+    protected static ?int $navigationSort = 4;
+
     protected static ?string $title = 'Leave Calendar';
 
     /** Roles with company-wide visibility. */

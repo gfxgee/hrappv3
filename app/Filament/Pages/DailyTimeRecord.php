@@ -18,6 +18,10 @@ class DailyTimeRecord extends Page
 
     protected static ?string $navigationLabel = 'Daily Time Record';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'My Workspace';
+
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $title = 'Daily Time Record';
 
     /** Roles that may view any employee's record. */

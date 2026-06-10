@@ -1,6 +1,8 @@
 <?php
 
 use App\Filament\Pages\ManageGeneralSettings;
+use App\Filament\Widgets\Employee\ComingUpWidget;
+use App\Models\Holiday;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
@@ -47,9 +49,7 @@ it('persists changed settings from the form', function () {
             'lunchThresholdHours' => 6.0,
             'standardWorkingHours' => 8.0,
             'workingDays' => [1, 2, 3, 4, 5, 6],
-            'birthdayWindowDays' => 30,
-            'holidayWindowDays' => 120,
-            'leaveWindowDays' => 45,
+            'comingUpWindowDays' => 30,
             'biometricDedupeMinutes' => 5,
             'praiseGifPerPage' => 20,
         ])
@@ -61,7 +61,23 @@ it('persists changed settings from the form', function () {
     expect($settings->lunchHours)->toBe(0.5)
         ->and($settings->lunchThresholdHours)->toBe(6.0)
         ->and($settings->workingDays)->toBe([1, 2, 3, 4, 5, 6])
-        ->and($settings->holidayWindowDays)->toBe(120)
+        ->and($settings->comingUpWindowDays)->toBe(30)
         ->and($settings->biometricDedupeMinutes)->toBe(5)
         ->and($settings->praiseGifPerPage)->toBe(20);
+});
+
+it('drives the coming up widget window from the setting', function () {
+    $this->actingAs(settingsManager('hr'));
+
+    GeneralSettings::fake(['comingUpWindowDays' => 5]);
+
+    Holiday::create(['name' => 'Inside Window', 'date' => today()->addDays(4)->toDateString()]);
+    Holiday::create(['name' => 'Outside Window', 'date' => today()->addDays(10)->toDateString()]);
+
+    $widget = Livewire::test(ComingUpWidget::class)->instance();
+    $labels = $widget->entries()->pluck('label');
+
+    expect($widget->windowDays)->toBe(5)
+        ->and($labels)->toContain('Inside Window')
+        ->and($labels)->not->toContain('Outside Window');
 });

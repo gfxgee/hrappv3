@@ -68,7 +68,9 @@ it('sums only approved overtime hours for the current month', function () {
         ->assertSee('1 request pending');
 });
 
-it('shows the next day off as the sooner of leave and holiday, skipping WFH', function () {
+it('computes the next day off as the sooner of leave and holiday, skipping WFH', function () {
+    // The stat card is currently unmounted from getStats(), so the
+    // computation is exercised directly to keep it covered.
     Holiday::create(['name' => 'Far Holiday', 'date' => today()->addDays(20)->toDateString()]);
     LeaveRequest::factory()->for($this->user)->create([
         'request_type' => LeaveType::WFH,
@@ -83,9 +85,11 @@ it('shows the next day off as the sooner of leave and holiday, skipping WFH', fu
         'end_date' => today()->addDays(6)->toDateString(),
     ]);
 
-    Livewire::test(EmployeeStatsWidget::class)
-        ->assertSee(today()->addDays(5)->format('j M'))
-        ->assertSee('in 5 days');
+    $widget = new EmployeeStatsWidget;
+    $stat = (fn () => $this->nextDayOffStat(auth()->user()))->call($widget);
+
+    expect($stat->getValue())->toBe(today()->addDays(5)->format('j M'))
+        ->and($stat->getDescription())->toBe('in 5 days');
 });
 
 it('scopes used leave days to a calendar year', function () {

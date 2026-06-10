@@ -35,14 +35,12 @@ class GeneralSettings extends Settings
 
     /*
     |--------------------------------------------------------------------------
-    | Dashboard windows (days ahead)
+    | Dashboard
     |--------------------------------------------------------------------------
     */
-    public int $birthdayWindowDays;
 
-    public int $holidayWindowDays;
-
-    public int $leaveWindowDays;
+    /** Days ahead the employee dashboard's "Coming up" widget looks. */
+    public int $comingUpWindowDays;
 
     /*
     |--------------------------------------------------------------------------
