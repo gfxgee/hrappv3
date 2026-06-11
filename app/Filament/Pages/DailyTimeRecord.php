@@ -194,9 +194,14 @@ class DailyTimeRecord extends Page
             fputcsv($handle, ['Email', $user->email]);
             fputcsv($handle, ['Period', $this->periodLabel()]);
             fputcsv($handle, []);
-            fputcsv($handle, ['Date', 'Day', 'Time In', 'Time Out', 'Hours', 'Late (min)', 'Undertime (min)', 'OT (hrs)', 'Status']);
+            fputcsv($handle, ['Date', 'Day', 'Time In', 'Time Out', 'Hours', 'Late (min)', 'Undertime (min)', 'OT (hrs)', 'OT Breakdown', 'Status']);
 
             foreach ($data['rows'] as $row) {
+                // Mirror the on-screen badges: every status, summed (e.g. "4 Approved · 1.5 For Approval").
+                $breakdown = collect($row['overtime_breakdown'])
+                    ->map(fn (array $entry): string => $entry['hours'].' '.$entry['status']->label())
+                    ->implode(' · ');
+
                 fputcsv($handle, [
                     $row['date']->toDateString(),
                     $row['day'],
@@ -206,6 +211,7 @@ class DailyTimeRecord extends Page
                     $row['late'],
                     $row['undertime'],
                     $row['overtime'],
+                    $breakdown,
                     $row['status'],
                 ]);
             }
@@ -215,6 +221,7 @@ class DailyTimeRecord extends Page
             fputcsv($handle, [
                 'Totals', '', '', '',
                 $totals['hours'], $totals['late'], $totals['undertime'], $totals['overtime'],
+                $totals['overtime_pending'] > 0 ? "Pending: {$totals['overtime_pending']}" : '',
                 "Present: {$totals['present']} · Absent: {$totals['absent']} · Leave: {$totals['leave']}",
             ]);
 
