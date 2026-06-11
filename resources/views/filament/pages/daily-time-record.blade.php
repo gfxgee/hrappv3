@@ -143,8 +143,25 @@
 
     <style>
         @media print {
+            /* Filament renders .fi-main-ctn at opacity 0 and fades it in via a
+               transition; the print clone keeps the initial state, printing a
+               blank page. Force it visible and undo layout clipping. */
+            .fi-main-ctn {
+                opacity: 1 !important;
+                transition: none !important;
+            }
+
+            html, body, .fi-body, .fi-layout, .fi-main-ctn, .fi-main {
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+            }
+
             .fi-sidebar, .fi-topbar, .fi-sidebar-header { display: none !important; }
-            .fi-main-ctn, .fi-main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+
+            .fi-main-ctn, .fi-main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important; }
+
+            .fi-body { background: #fff !important; }
         }
     </style>
 </x-filament-panels::page>
