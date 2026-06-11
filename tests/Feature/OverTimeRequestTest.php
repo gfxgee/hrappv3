@@ -63,6 +63,47 @@ it('renders the overtime list for a manager', function () {
     Livewire::test(ListOverTimeRequests::class)->assertSuccessful();
 });
 
+it('lists overtime from active employees only', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $active = User::factory()->create(['status' => 'active']);
+    $inactive = User::factory()->create(['status' => 'inactive']);
+    $activeOt = OverTimeRequest::factory()->for($active)->create();
+    $inactiveOt = OverTimeRequest::factory()->for($inactive)->create();
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->assertCanSeeTableRecords([$activeOt])
+        ->assertCanNotSeeTableRecords([$inactiveOt]);
+});
+
+it('filters overtime by a selected employee', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $alice = User::factory()->create(['status' => 'active', 'name' => 'Alice']);
+    $bob = User::factory()->create(['status' => 'active', 'name' => 'Bob']);
+    $aliceOt = OverTimeRequest::factory()->for($alice)->create();
+    $bobOt = OverTimeRequest::factory()->for($bob)->create();
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->filterTable('user', $alice->id)
+        ->assertCanSeeTableRecords([$aliceOt])
+        ->assertCanNotSeeTableRecords([$bobOt]);
+});
+
+it('summarizes hours separately for pending and approved overtime', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $employee = User::factory()->create(['status' => 'active']);
+    OverTimeRequest::factory()->for($employee)->create(['status' => AttendanceStatus::FOR_APPROVAL, 'hours' => 1.5]);
+    OverTimeRequest::factory()->for($employee)->create(['status' => AttendanceStatus::FOR_APPROVAL, 'hours' => 2.0]);
+    OverTimeRequest::factory()->for($employee)->create(['status' => AttendanceStatus::APPROVED, 'hours' => 4.0]);
+    OverTimeRequest::factory()->for($employee)->create(['status' => AttendanceStatus::APPROVED_AND_VERIFIED, 'hours' => 3.0]);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->assertTableColumnSummarySet('hours', 'forApprovalHours', 3.5) // 1.5 + 2.0
+        ->assertTableColumnSummarySet('hours', 'approvedHours', 7.0);   // 4.0 + 3.0 (incl. verified)
+});
+
 it('renders the overtime edit page', function () {
     $this->actingAs(overtimeManager('hr'));
     $ot = OverTimeRequest::factory()->create();

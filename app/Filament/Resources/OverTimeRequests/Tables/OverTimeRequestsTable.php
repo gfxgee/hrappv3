@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\OverTimeRequests\Tables;
 
 use App\Enum\AttendanceStatus;
+use App\Enum\UserStatus;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\OverTimeRequest;
 use Filament\Actions\Action;
@@ -11,9 +12,12 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 
 class OverTimeRequestsTable
@@ -22,6 +26,11 @@ class OverTimeRequestsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            // Only list overtime filed by active employees.
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereHas(
+                'user',
+                fn (Builder $userQuery): Builder => $userQuery->where('status', UserStatus::ACTIVE->value),
+            ))
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Employee')
@@ -38,7 +47,22 @@ class OverTimeRequestsTable
                 TextColumn::make('hours')
                     ->numeric(decimalPlaces: 2)
                     ->suffix(' hrs')
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize([
+                        Sum::make('forApprovalHours')
+                            ->label('For approval')
+                            ->query(fn (QueryBuilder $query): QueryBuilder => $query->where('status', AttendanceStatus::FOR_APPROVAL->value))
+                            ->numeric(decimalPlaces: 2)
+                            ->suffix(' hrs'),
+                        Sum::make('approvedHours')
+                            ->label('Approved')
+                            ->query(fn (QueryBuilder $query): QueryBuilder => $query->whereIn('status', [
+                                AttendanceStatus::APPROVED->value,
+                                AttendanceStatus::APPROVED_AND_VERIFIED->value,
+                            ]))
+                            ->numeric(decimalPlaces: 2)
+                            ->suffix(' hrs'),
+                    ]),
                 TextColumn::make('reason')
                     ->limit(40)
                     ->wrap()
@@ -59,6 +83,11 @@ class OverTimeRequestsTable
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('user')
+                    ->label('Employee')
+                    ->relationship('user', 'name', fn (Builder $query): Builder => $query->where('status', UserStatus::ACTIVE->value)->orderBy('name'))
+                    ->searchable()
+                    ->preload(),
                 SelectFilter::make('status')
                     ->options(AttendanceStatus::toArray()),
             ])
