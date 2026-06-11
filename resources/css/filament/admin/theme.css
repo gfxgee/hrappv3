@@ -9,6 +9,7 @@
 | Brand the admin sidebar in deep purple (#1e1242) with light text/icons
 | for contrast. Works in both light and dark mode.
 */
+
 .fi-sidebar,
 .fi-sidebar-header {
     background-color: #1e1242;

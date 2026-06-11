@@ -40,13 +40,22 @@
         </div>
 
         <div class="ml-auto flex items-center gap-2">
-            <x-filament::button size="sm" color="gray" icon="heroicon-o-printer" x-on:click="window.print()">Print</x-filament::button>
+            <x-filament::button
+                size="sm"
+                color="gray"
+                icon="heroicon-o-printer"
+                tag="a"
+                target="_blank"
+                :href="route('dtr.pdf', ['employee' => $this->employeeId, 'from' => $this->from, 'until' => $this->until])"
+            >
+                Print / PDF
+            </x-filament::button>
             <x-filament::button size="sm" icon="heroicon-o-arrow-down-tray" wire:click="exportCsv">Export CSV</x-filament::button>
         </div>
     </div>
 
     {{-- Printable record --}}
-    <div class="mt-4 rounded-xl border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-white/5 print:border-0 print:shadow-none">
+    <div id="dtr-printable" class="mt-4 rounded-xl border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-white/5 print:border-0 print:shadow-none">
         <div class="mb-4 flex flex-wrap items-end justify-between gap-2 border-b border-gray-100 pb-3 dark:border-white/10">
             <div>
                 <h2 class="text-lg font-bold text-gray-950 dark:text-white">Daily Time Record</h2>
@@ -162,6 +171,15 @@
             .fi-main-ctn, .fi-main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; width: 100% !important; }
 
             .fi-body { background: #fff !important; }
+
+            /* Chrome's print snapshot often skips loading the Poppins web font,
+               leaving glyphs unpainted (text shows as blank bars). Force a
+               system font and solid dark text so the record is always legible. */
+            #dtr-printable, #dtr-printable * {
+                font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+                color: #111827 !important;
+                -webkit-text-fill-color: #111827 !important;
+            }
         }
     </style>
 </x-filament-panels::page>

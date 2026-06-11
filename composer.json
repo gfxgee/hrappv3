@@ -20,6 +20,8 @@
         "prism-php/prism": "^0.100.1",
         "sentry/sentry-laravel": "^4.25",
         "socialiteproviders/microsoft": "^4.9",
+        "spatie/browsershot": "^5.4",
+        "spatie/laravel-pdf": "^2.11",
         "spatie/laravel-permission": "*",
         "spatie/laravel-settings": "^3.9"
     },

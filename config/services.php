@@ -60,4 +60,13 @@ return [
         'rating' => env('GIF_RATING', 'pg'),
     ],
 
+    'chrome' => [
+        // Absolute path to a Chrome/Chromium binary for Browsershot (PDF
+        // rendering). Leave null to let Browsershot auto-detect. Set this when
+        // Puppeteer-managed Chrome isn't auto-resolved, e.g. on Windows/Herd.
+        'path' => env('BROWSERSHOT_CHROME_PATH'),
+        'node_binary' => env('BROWSERSHOT_NODE_BINARY'),
+        'npm_binary' => env('BROWSERSHOT_NPM_BINARY'),
+    ],
+
 ];

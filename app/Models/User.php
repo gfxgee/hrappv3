@@ -54,6 +54,25 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     }
 
     /**
+     * Whether this user may view the daily time record of $target. Managers
+     * see everyone, team leaders see their departments' members, and everyone
+     * may view their own.
+     */
+    public function canViewDtrOf(User $target): bool
+    {
+        if ($this->isManager() || $this->is($target)) {
+            return true;
+        }
+
+        if ($this->isTeamLeader()) {
+            return $target->department_id !== null
+                && $this->ledDepartments()->whereKey($target->department_id)->exists();
+        }
+
+        return false;
+    }
+
+    /**
      * Whether this user may access the Filament panel. The panel is the
      * employee self-service portal, so every active employee gets in;
      * per-resource role checks govern what they can actually do.
