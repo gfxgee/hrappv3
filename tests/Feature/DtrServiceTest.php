@@ -125,3 +125,40 @@ it('sums approved overtime hours onto the day', function () {
 
     expect($row['overtime'])->toBe(2.5);
 });
+
+it('breaks overtime down per status while totalling only approved hours', function () {
+    $user = User::factory()->create();
+
+    OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::APPROVED,
+        'request_date' => '2026-06-01',
+        'hours' => 2.0,
+    ]);
+    OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::FOR_APPROVAL,
+        'request_date' => '2026-06-01',
+        'hours' => 1.5,
+    ]);
+    OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::FOR_APPROVAL,
+        'request_date' => '2026-06-01',
+        'hours' => 0.5,
+    ]);
+    OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::CANCELLED, // excluded entirely
+        'request_date' => '2026-06-01',
+        'hours' => 9.0,
+    ]);
+
+    $data = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'));
+    $row = $data['rows'][0];
+
+    $byStatus = collect($row['overtime_breakdown'])->keyBy(fn (array $entry): string => $entry['status']->value);
+
+    expect($row['overtime'])->toBe(2.0) // approved only
+        ->and($data['totals']['overtime'])->toBe(2.0)
+        ->and($data['totals']['overtime_pending'])->toBe(2.0) // 1.5 + 0.5 for-approval
+        ->and($byStatus->get('approved')['hours'])->toBe(2.0)
+        ->and($byStatus->get('forapproval')['hours'])->toBe(2.0) // 1.5 + 0.5 summed
+        ->and($byStatus->has('cancelled'))->toBeFalse();
+});

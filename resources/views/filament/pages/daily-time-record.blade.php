@@ -89,7 +89,22 @@
                             <td class="py-1.5 pr-3 text-right tabular-nums">{{ $row['hours'] ?: '—' }}</td>
                             <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['late'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['late'] ? $this->humanMinutes($row['late']) : '—' }}</td>
                             <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['undertime'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['undertime'] ? $this->humanMinutes($row['undertime']) : '—' }}</td>
-                            <td class="py-1.5 pr-3 text-right tabular-nums">{{ $row['overtime'] ?: '—' }}</td>
+                            <td class="py-1.5 pr-3 text-right tabular-nums">
+                                @if ($row['overtime_breakdown'] === [])
+                                    <span class="text-gray-400">—</span>
+                                @else
+                                    <span class="inline-flex flex-wrap items-center justify-end gap-1">
+                                        @foreach ($row['overtime_breakdown'] as $entry)
+                                            <x-filament::badge
+                                                :color="$entry['status']->color()"
+                                                :title="$entry['status']->label()"
+                                            >
+                                                {{ rtrim(rtrim(number_format($entry['hours'], 2), '0'), '.') }}h
+                                            </x-filament::badge>
+                                        @endforeach
+                                    </span>
+                                @endif
+                            </td>
                             <td class="py-1.5">
                                 <span @class([
                                     'rounded px-1.5 py-0.5 text-xs font-medium',
@@ -109,7 +124,14 @@
                         <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['hours'] }}</td>
                         <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['late'] ? $this->humanMinutes($totals['late']) : '—' }}</td>
                         <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['undertime'] ? $this->humanMinutes($totals['undertime']) : '—' }}</td>
-                        <td class="py-2 pr-3 text-right tabular-nums">{{ $totals['overtime'] }}</td>
+                        <td class="py-2 pr-3 text-right tabular-nums whitespace-nowrap">
+                            {{ $totals['overtime'] }}
+                            @if ($totals['overtime_pending'] > 0)
+                                <x-filament::badge color="info" title="Overtime awaiting approval">
+                                    +{{ rtrim(rtrim(number_format($totals['overtime_pending'], 2), '0'), '.') }}h pending
+                                </x-filament::badge>
+                            @endif
+                        </td>
                         <td class="py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                             {{ $totals['present'] }} present · {{ $totals['absent'] }} absent · {{ $totals['leave'] }} leave
                         </td>

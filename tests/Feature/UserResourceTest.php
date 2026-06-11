@@ -1,14 +1,17 @@
 <?php
 
+use App\Enum\AttendanceStatus;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
 use App\Filament\Resources\Users\RelationManagers\AttendanceLogsRelationManager;
+use App\Filament\Resources\Users\RelationManagers\OverTimeRequestsRelationManager;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\AttendanceLog;
 use App\Models\Department;
 use App\Models\LeaveRequest;
+use App\Models\OverTimeRequest;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
@@ -240,6 +243,101 @@ it('filters attendance logs by a date range', function () {
         ->filterTable('logged_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
         ->assertCanSeeTableRecords([$recent])
         ->assertCanNotSeeTableRecords([$old]);
+});
+
+it('lists overtime requests with a footer sum of hours', function () {
+    $user = User::factory()->create();
+
+    $first = OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::APPROVED,
+        'request_date' => '2026-06-02 18:00:00',
+        'hours' => 2.5,
+    ]);
+    $second = OverTimeRequest::factory()->for($user)->create([
+        'status' => AttendanceStatus::FOR_APPROVAL,
+        'request_date' => '2026-06-03 18:00:00',
+        'hours' => 1.5,
+    ]);
+    $otherUsers = OverTimeRequest::factory()->create(['hours' => 9.0]);
+
+    Livewire::test(OverTimeRequestsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$first, $second])
+        ->assertCanNotSeeTableRecords([$otherUsers])
+        ->assertSeeText('4.00 h'); // footer sum: 2.5 + 1.5
+});
+
+it('filters overtime requests by a date range', function () {
+    $user = User::factory()->create();
+
+    $inRange = OverTimeRequest::factory()->for($user)->create(['request_date' => '2026-06-15 18:00:00']);
+    $outOfRange = OverTimeRequest::factory()->for($user)->create(['request_date' => '2026-05-01 18:00:00']);
+
+    Livewire::test(OverTimeRequestsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->filterTable('requested_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->assertCanSeeTableRecords([$inRange])
+        ->assertCanNotSeeTableRecords([$outOfRange]);
+});
+
+it('applies the this-month quick filter to overtime requests', function () {
+    $user = User::factory()->create();
+
+    $thisMonth = OverTimeRequest::factory()->for($user)->create([
+        'request_date' => now()->startOfMonth()->addDays(3)->setHour(18),
+    ]);
+    $lastMonth = OverTimeRequest::factory()->for($user)->create([
+        'request_date' => now()->subMonthNoOverflow()->startOfMonth()->addDays(3)->setHour(18),
+    ]);
+
+    Livewire::test(OverTimeRequestsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->callTableAction('thisMonth')
+        ->assertCanSeeTableRecords([$thisMonth])
+        ->assertCanNotSeeTableRecords([$lastMonth])
+        ->callTableAction('lastMonth')
+        ->assertCanSeeTableRecords([$lastMonth])
+        ->assertCanNotSeeTableRecords([$thisMonth]);
+});
+
+it('creates an overtime request from the relation manager', function () {
+    $user = User::factory()->create();
+
+    Livewire::test(OverTimeRequestsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->callTableAction('create', data: [
+            'request_date' => '2026-06-11',
+            'hours' => 2.5,
+            'reason' => 'Production deploy support',
+            'status' => AttendanceStatus::FOR_APPROVAL->value,
+        ])
+        ->assertHasNoTableActionErrors();
+
+    $request = OverTimeRequest::where('user_id', $user->id)->firstOrFail();
+
+    expect((float) $request->hours)->toBe(2.5)
+        ->and($request->status)->toBe(AttendanceStatus::FOR_APPROVAL);
+});
+
+it('exports overtime requests as a CSV download', function () {
+    $user = User::factory()->create();
+    OverTimeRequest::factory()->for($user)->create();
+
+    Livewire::test(OverTimeRequestsRelationManager::class, [
+        'ownerRecord' => $user,
+        'pageClass' => EditUser::class,
+    ])
+        ->callTableAction('export')
+        ->assertFileDownloaded();
 });
 
 it('exports attendance logs as a CSV download', function () {

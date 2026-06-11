@@ -32,9 +32,13 @@ class DtrService
     public function __construct(protected GeneralSettings $settings) {}
 
     /**
+     * Each row's `overtime` (and the total) counts approved/verified hours
+     * only; `overtime_breakdown` additionally sums the day's requests per
+     * status (excluding cancelled) so the UI can color them.
+     *
      * @return array{
-     *     rows: list<array{date: CarbonInterface, day: string, time_in: ?string, time_out: ?string, hours: float, late: int, undertime: int, overtime: float, status: string}>,
-     *     totals: array{present: int, absent: int, leave: int, hours: float, late: int, undertime: int, overtime: float},
+     *     rows: list<array{date: CarbonInterface, day: string, time_in: ?string, time_out: ?string, hours: float, late: int, undertime: int, overtime: float, overtime_breakdown: list<array{status: AttendanceStatus, hours: float}>, status: string}>,
+     *     totals: array{present: int, absent: int, leave: int, hours: float, late: int, undertime: int, overtime: float, overtime_pending: float},
      * }
      */
     public function build(User $user, CarbonInterface $from, CarbonInterface $to): array
@@ -70,7 +74,7 @@ class DtrService
 
         $overtimeByDate = OverTimeRequest::query()
             ->where('user_id', $user->id)
-            ->whereIn('status', [AttendanceStatus::APPROVED->value, AttendanceStatus::APPROVED_AND_VERIFIED->value])
+            ->where('status', '!=', AttendanceStatus::CANCELLED->value)
             ->whereBetween('request_date', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->get()
             ->groupBy(fn (OverTimeRequest $request): string => $request->request_date->toDateString());
@@ -78,7 +82,7 @@ class DtrService
         $userData = $user->userData;
 
         $rows = [];
-        $totals = ['present' => 0, 'absent' => 0, 'leave' => 0, 'hours' => 0.0, 'late' => 0, 'undertime' => 0, 'overtime' => 0.0];
+        $totals = ['present' => 0, 'absent' => 0, 'leave' => 0, 'hours' => 0.0, 'late' => 0, 'undertime' => 0, 'overtime' => 0.0, 'overtime_pending' => 0.0];
 
         for ($cursor = $from->copy(); $cursor->lessThanOrEqualTo($to); $cursor = $cursor->addDay()) {
             $key = $cursor->toDateString();
@@ -108,7 +112,26 @@ class DtrService
                 }
             }
 
-            $overtime = (float) ($overtimeByDate->get($key)?->sum('hours') ?? 0);
+            /** @var Collection<int, OverTimeRequest> $dayOvertimes */
+            $dayOvertimes = $overtimeByDate->get($key) ?? collect();
+
+            $overtime = round((float) $dayOvertimes
+                ->whereIn('status', [AttendanceStatus::APPROVED, AttendanceStatus::APPROVED_AND_VERIFIED])
+                ->sum('hours'), 2);
+
+            $overtimePending = round((float) $dayOvertimes
+                ->where('status', AttendanceStatus::FOR_APPROVAL)
+                ->sum('hours'), 2);
+
+            $overtimeBreakdown = $dayOvertimes
+                ->groupBy(fn (OverTimeRequest $request): string => $request->status->value)
+                ->map(fn (Collection $group): array => [
+                    'status' => $group->first()->status,
+                    'hours' => round((float) $group->sum('hours'), 2),
+                ])
+                ->values()
+                ->all();
+
             $holiday = $holidays->get($key);
             $leave = $leaves->first(fn (LeaveRequest $leave): bool => $leave->start_date->lessThanOrEqualTo($cursor)
                 && $leave->end_date->greaterThanOrEqualTo($cursor));
@@ -132,6 +155,7 @@ class DtrService
             $totals['late'] += $late;
             $totals['undertime'] += $undertime;
             $totals['overtime'] += $overtime;
+            $totals['overtime_pending'] += $overtimePending;
 
             $rows[] = [
                 'date' => $cursor->copy(),
@@ -142,12 +166,14 @@ class DtrService
                 'late' => $late,
                 'undertime' => $undertime,
                 'overtime' => $overtime,
+                'overtime_breakdown' => $overtimeBreakdown,
                 'status' => $status,
             ];
         }
 
         $totals['hours'] = round($totals['hours'], 2);
         $totals['overtime'] = round($totals['overtime'], 2);
+        $totals['overtime_pending'] = round($totals['overtime_pending'], 2);
 
         return ['rows' => $rows, 'totals' => $totals];
     }
