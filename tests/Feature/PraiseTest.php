@@ -209,6 +209,17 @@ it('adds a comment to a praise', function () {
         ->exists())->toBeTrue();
 });
 
+it('dispatches a confetti event when the praise modal opens', function () {
+    $me = praiseUser();
+    $this->actingAs($me);
+    $praise = Praise::factory()->create();
+
+    Livewire::test(PraiseWall::class)
+        ->mountAction('viewPraise', ['praise' => $praise->id])
+        ->assertActionMounted('viewPraise')
+        ->assertDispatched('praise-opened');
+});
+
 it('keeps the praise modal open after posting a comment', function () {
     $me = praiseUser();
     $this->actingAs($me);

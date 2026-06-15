@@ -37,7 +37,13 @@
                 @php($avatar = $recipient?->getFilamentAvatarUrl()
                     ?? 'https://ui-avatars.com/api/?name=' . urlencode($recipient?->name ?? 'User') . '&size=160')
 
-                <div class="flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-900">
+                <div
+                    role="button"
+                    tabindex="0"
+                    wire:click="mountAction('viewPraise', @js(['praise' => $praise->id]))"
+                    wire:keydown.enter="mountAction('viewPraise', @js(['praise' => $praise->id]))"
+                    class="flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:border-white/10 dark:bg-gray-900"
+                >
                     {{-- Banner + avatar --}}
                     <div class="bg-gradient-to-br from-sky-100 to-teal-100 px-4 pb-4 pt-6 text-center dark:from-sky-500/10 dark:to-teal-500/10">
                         <img
@@ -59,13 +65,9 @@
                             </div>
                         @endif
 
-                        <button
-                            type="button"
-                            wire:click="mountAction('viewPraise', @js(['praise' => $praise->id]))"
-                            class="whitespace-pre-line text-left text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                        >
+                        <p class="whitespace-pre-line text-left text-sm text-gray-500 dark:text-gray-400">
                             {{ \Illuminate\Support\Str::limit($praise->message, 140) }}
-                        </button>
+                        </p>
                     </div>
 
                     {{-- Footer --}}
@@ -73,7 +75,7 @@
                         <div class="flex items-center gap-1">
                             <button
                                 type="button"
-                                wire:click="toggleReaction({{ $praise->id }})"
+                                wire:click.stop="toggleReaction({{ $praise->id }})"
                                 @class([
                                     'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium transition',
                                     'text-danger-600 dark:text-danger-400' => $this->hasReacted($praise),
@@ -86,7 +88,7 @@
 
                             <button
                                 type="button"
-                                wire:click="mountAction('viewPraise', @js(['praise' => $praise->id]))"
+                                wire:click.stop="mountAction('viewPraise', @js(['praise' => $praise->id]))"
                                 class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 transition hover:text-primary-500 dark:text-gray-400"
                             >
                                 <span>💬</span>
@@ -98,7 +100,7 @@
                             @if ($this->ownsPraise($praise))
                                 <button
                                     type="button"
-                                    wire:click="mountAction('editPraise', @js(['praise' => $praise->id]))"
+                                    wire:click.stop="mountAction('editPraise', @js(['praise' => $praise->id]))"
                                     title="Edit praise"
                                     class="text-gray-400 transition hover:text-primary-500"
                                 >
@@ -108,7 +110,7 @@
                                 </button>
                                 <button
                                     type="button"
-                                    wire:click="mountAction('deletePraise', @js(['praise' => $praise->id]))"
+                                    wire:click.stop="mountAction('deletePraise', @js(['praise' => $praise->id]))"
                                     title="Delete praise"
                                     class="text-gray-400 transition hover:text-danger-500"
                                 >
@@ -175,7 +177,34 @@
                 })();
             };
 
+            window.schoolPrideConfetti = function () {
+                var colors = ['#e39230', '#fb2c36', '#1e1242', '#1297e9', '#fb2c36', '#fff'];
+
+                if (typeof confetti !== 'function') return;
+
+                const end = Date.now() + 2500;
+                (function frame() {
+                   confetti({
+                        particleCount: 2,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: colors
+                    });
+                    confetti({
+                        particleCount: 2,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: colors
+                    });
+
+                    if (Date.now() < end) requestAnimationFrame(frame);
+                })();
+            };
+
             $wire.on('praise-confetti', () => window.boomConfetti());
+            $wire.on('praise-opened', () => window.schoolPrideConfetti());
         </script>
     @endscript
 </x-filament-panels::page>

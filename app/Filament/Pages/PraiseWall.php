@@ -652,13 +652,17 @@ class PraiseWall extends Page
     public function viewPraiseAction(): Action
     {
         return Action::make('viewPraise')
-            ->modalHeading(fn (array $arguments): string => $this->loadPraise((int) $arguments['praise'])?->recipient?->name ?? 'Praise')
+            ->modalHeading('🎉 Praise')
             ->modalContent(fn (array $arguments) => view('filament.praise.detail', [
                 'praise' => $this->loadPraise((int) $arguments['praise']),
             ]))
             ->modalWidth('lg')
             ->modalSubmitAction(false)
             ->modalCancelActionLabel('Close')
-            ->mountUsing(fn () => $this->resetComposer());
+            // Reset the composer and rain confetti every time the modal opens.
+            ->mountUsing(function (): void {
+                $this->resetComposer();
+                $this->dispatch('praise-opened');
+            });
     }
 }
