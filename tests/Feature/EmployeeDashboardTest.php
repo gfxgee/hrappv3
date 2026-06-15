@@ -42,6 +42,15 @@ it('greets the user and lists department leaders excluding themselves', function
         ->and($page->leaderNames())->toBe(['Sarah Park']);
 });
 
+it('puts the employee name in the document title but not the page heading', function () {
+    $this->user->update(['name' => 'Daniel Cruz']);
+
+    $page = new Dashboard;
+
+    expect($page->getTitle())->toBe('Daniel Cruz · Dashboard')
+        ->and($page->getHeading())->toBe('Dashboard');
+});
+
 it('renders the employee stats widget', function () {
     Livewire::test(EmployeeStatsWidget::class)->assertSuccessful();
 });

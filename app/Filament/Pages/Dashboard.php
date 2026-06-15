@@ -16,6 +16,25 @@ class Dashboard extends BaseDashboard
     protected string $view = 'filament.pages.dashboard';
 
     /**
+     * Browser tab / document title — includes the signed-in employee's name.
+     */
+    public function getTitle(): string
+    {
+        $name = auth()->user()?->name;
+
+        return $name ? "{$name} · Dashboard" : 'Dashboard';
+    }
+
+    /**
+     * Keep the visible page heading as a plain "Dashboard" (the personalized
+     * greeting already lives in the page header).
+     */
+    public function getHeading(): string
+    {
+        return 'Dashboard';
+    }
+
+    /**
      * Time-of-day greeting for the header.
      */
     public function greeting(): string
