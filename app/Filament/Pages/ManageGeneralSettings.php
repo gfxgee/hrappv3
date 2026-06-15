@@ -11,7 +11,6 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use UnitEnum;
 
 /**
  * Company-wide settings, editable by HR / super admins. Backed by the
@@ -23,10 +22,6 @@ class ManageGeneralSettings extends SettingsPage
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Settings';
-
-    protected static ?string $navigationLabel = 'Settings';
-
     protected static ?string $title = 'Settings';
 
     /** Roles allowed to view and edit company-wide settings. */
@@ -37,9 +32,10 @@ class ManageGeneralSettings extends SettingsPage
         return (bool) auth()->user()?->hasAnyRole(static::MANAGER_ROLES);
     }
 
+    // Reached from the user (avatar) menu, not the sidebar.
     public static function shouldRegisterNavigation(): bool
     {
-        return static::canAccess();
+        return false;
     }
 
     public function form(Schema $schema): Schema

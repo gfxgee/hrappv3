@@ -34,6 +34,26 @@ it('denies regular users access to the settings page', function () {
     expect(ManageGeneralSettings::canAccess())->toBeFalse();
 });
 
+it('is reached from the user menu, not the sidebar', function () {
+    $this->actingAs(settingsManager('hr'));
+
+    expect(ManageGeneralSettings::shouldRegisterNavigation())->toBeFalse();
+
+    $items = Filament::getPanel('admin')->getUserMenuItems();
+
+    expect($items)->toHaveKey('settings')
+        ->and($items['settings']->getUrl())->toBe(ManageGeneralSettings::getUrl())
+        ->and($items['settings']->isVisible())->toBeTrue();
+});
+
+it('hides the settings user-menu item from non-managers', function () {
+    $this->actingAs(User::factory()->create());
+
+    $items = Filament::getPanel('admin')->getUserMenuItems();
+
+    expect($items)->not->toHaveKey('settings');
+});
+
 it('renders the settings page for a manager', function () {
     $this->actingAs(settingsManager('hr'));
 

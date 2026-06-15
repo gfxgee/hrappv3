@@ -5,6 +5,8 @@ namespace App\Providers\Filament;
 use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ManageGeneralSettings;
+use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -12,6 +14,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -36,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile(EditProfile::class, isSimple: false)
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
-            ->font('Poppins')
+            ->font('Ubuntu')
             ->colors([
                 'primary' => Color::Amber,
                 'verified' => Color::hex('#1e1242'),
@@ -52,7 +55,15 @@ class AdminPanelProvider extends PanelProvider
                 'HR Management',
                 'Recognition',
                 'Access Control',
-                'Settings',
+            ])
+            // Settings lives in the user (avatar) menu, just under Profile.
+            ->userMenuItems([
+                'settings' => Action::make('settings')
+                    ->label('Settings')
+                    ->icon(Heroicon::OutlinedCog6Tooth)
+                    ->url(fn (): string => ManageGeneralSettings::getUrl())
+                    ->visible(fn (): bool => ManageGeneralSettings::canAccess())
+                    ->sort(0),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->middleware([

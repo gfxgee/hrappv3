@@ -10,6 +10,10 @@
 | for contrast. Works in both light and dark mode.
 */
 
+.fi-sidebar-nav-groups {
+    row-gap: 0.25rem;
+}
+
 .fi-sidebar,
 .fi-sidebar-header {
     background-color: #1e1242;
@@ -56,4 +60,37 @@
 .fi-sidebar-header .fi-logo,
 .fi-sidebar-header .fi-icon-btn {
     color: white;
+}
+
+/*
+| Compact, Personio-style sidebar (applies to everyone): tighter item height,
+| smaller text/icons, snugger groups.
+*/
+.fi-sidebar-nav {
+    gap: 0.125rem;
+}
+
+.fi-sidebar-group {
+    margin-top: 0.25rem;
+}
+
+.fi-sidebar-group-label {
+    font-size: 0.6875rem;
+    padding-block: 0.25rem;
+}
+
+.fi-sidebar-item-btn {
+    padding-block: 0.375rem;
+    gap: 0.625rem;
+    font-size: 0.8125rem;
+    border-radius: 0.5rem;
+}
+
+.fi-sidebar-item-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.fi-sidebar-header {
+    padding-block: 0.5rem;
 }
