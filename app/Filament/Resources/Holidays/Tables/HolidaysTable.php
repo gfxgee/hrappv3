@@ -8,6 +8,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
@@ -28,9 +29,8 @@ class HolidaysTable
                 TextColumn::make('duration')
                     ->badge()
                     ->formatStateUsing(fn (HolidayDuration $state): string => $state->label()),
-                IconColumn::make('is_active')
+                ToggleColumn::make('is_active')
                     ->label('Active')
-                    ->boolean()
                     ->sortable(),
             ])
             ->filters([

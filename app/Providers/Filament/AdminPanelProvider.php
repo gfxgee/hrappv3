@@ -74,6 +74,10 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): View => view('components.google-analytics'),
             )
+            ->renderHook(
+                PanelsRenderHook::PAGE_START,
+                fn (): View => view('filament.announcements.banners'),
+            )
             ->spa(hasPrefetching: true);
     }
 }
