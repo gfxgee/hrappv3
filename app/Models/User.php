@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enum\UserStatus;
+use App\Models\Concerns\TracksActivity;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
@@ -36,7 +37,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TracksActivity, TwoFactorAuthenticatable;
 
     /**
      * Roles with HR/admin-level access across the app.
@@ -44,6 +45,17 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
      * @var list<string>
      */
     public const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+
+    /**
+     * Audited columns — an explicit allow-list that deliberately excludes all
+     * secrets (password, tokens, 2FA) so they never reach the activity log.
+     *
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['name', 'email', 'status', 'active', 'department_id', 'job_title', 'employment_status'];
+    }
 
     /**
      * Whether the user holds an HR/admin-level role.

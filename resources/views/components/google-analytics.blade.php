@@ -5,5 +5,17 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
-  gtag('config', 'G-CHWWG9H8R8');
+  @auth
+    {{-- Pseudonymous per-user tracking: send the numeric user id (never name/email,
+         which GA prohibits). Map the id back to a person internally if needed. --}}
+    gtag('config', 'G-CHWWG9H8R8', {
+      user_id: @js((string) auth()->id()),
+    });
+    gtag('set', 'user_properties', {
+      department: @js(auth()->user()->department?->name),
+      role: @js(auth()->user()->getRoleNames()->first()),
+    });
+  @else
+    gtag('config', 'G-CHWWG9H8R8');
+  @endauth
 </script>

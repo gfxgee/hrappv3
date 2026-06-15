@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum\AnnouncementType;
+use App\Models\Concerns\TracksActivity;
 use Database\Factories\AnnouncementFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,7 +21,17 @@ class Announcement extends Model
     /** @use HasFactory<AnnouncementFactory> */
     use HasFactory;
 
+    use TracksActivity;
+
     protected $guarded = [];
+
+    /**
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['title', 'message', 'type', 'is_active', 'starts_at', 'ends_at'];
+    }
 
     /**
      * @return array<string, string>

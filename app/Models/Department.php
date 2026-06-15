@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksActivity;
+use Database\Factories\DepartmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,10 +11,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Department extends Model
 {
-    /** @use HasFactory<\Database\Factories\DepartmentFactory> */
+    /** @use HasFactory<DepartmentFactory> */
     use HasFactory;
 
+    use TracksActivity;
+
     protected $guarded = [];
+
+    /**
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['name'];
+    }
 
     /**
      * Employees belonging to this department.

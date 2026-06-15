@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum\HolidayDuration;
+use App\Models\Concerns\TracksActivity;
 use Database\Factories\HolidayFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -14,7 +15,17 @@ class Holiday extends Model
     /** @use HasFactory<HolidayFactory> */
     use HasFactory;
 
+    use TracksActivity;
+
     protected $guarded = [];
+
+    /**
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['name', 'emoji', 'date', 'duration', 'is_active', 'description'];
+    }
 
     /**
      * @return array<string, string>

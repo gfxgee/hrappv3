@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enum\AttendanceStatus;
+use App\Models\Concerns\TracksActivity;
 use App\Services\RequestNotifier;
 use App\Services\TeamsNotifier;
 use Database\Factories\OverTimeRequestFactory;
@@ -15,9 +16,19 @@ class OverTimeRequest extends Model
     /** @use HasFactory<OverTimeRequestFactory> */
     use HasFactory;
 
+    use TracksActivity;
+
     protected $table = 'over_time_requests';
 
     protected $guarded = [];
+
+    /**
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['user_id', 'request_date', 'hours', 'reason', 'status', 'approved_date'];
+    }
 
     /**
      * Notify the approvers whenever a request is filed for approval.

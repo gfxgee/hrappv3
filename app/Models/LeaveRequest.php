@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
+use App\Models\Concerns\TracksActivity;
 use App\Services\RequestNotifier;
 use App\Services\TeamsNotifier;
 use App\Settings\GeneralSettings;
@@ -18,7 +19,17 @@ class LeaveRequest extends Model
     /** @use HasFactory<LeaveRequestFactory> */
     use HasFactory;
 
+    use TracksActivity;
+
     protected $guarded = [];
+
+    /**
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['user_id', 'request_type', 'start_date', 'end_date', 'start_time', 'end_time', 'reason', 'status'];
+    }
 
     /**
      * Notify the approvers whenever a request is filed for approval.

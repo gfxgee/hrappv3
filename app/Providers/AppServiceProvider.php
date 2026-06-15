@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -31,6 +34,31 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureSocialite();
         $this->configurePdf();
+        $this->configureActivityLog();
+    }
+
+    /**
+     * Record authentication activity (sign in, sign out, failed attempts) to
+     * the activity log under the "auth" log name.
+     */
+    protected function configureActivityLog(): void
+    {
+        Event::listen(function (Login $event): void {
+            activity('auth')->causedBy($event->user)->event('login')->log('Signed in');
+        });
+
+        Event::listen(function (Logout $event): void {
+            if ($event->user !== null) {
+                activity('auth')->causedBy($event->user)->event('logout')->log('Signed out');
+            }
+        });
+
+        Event::listen(function (Failed $event): void {
+            activity('auth')
+                ->withProperties(['email' => $event->credentials['email'] ?? null])
+                ->event('failed_login')
+                ->log('Failed sign-in');
+        });
     }
 
     /**

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\TracksActivity;
+use Database\Factories\PraiseSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,8 +12,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable(['name', 'is_active'])]
 class PraiseSession extends Model
 {
-    /** @use HasFactory<\Database\Factories\PraiseSessionFactory> */
+    /** @use HasFactory<PraiseSessionFactory> */
     use HasFactory;
+
+    use TracksActivity;
+
+    /**
+     * @return list<string>
+     */
+    protected function activitylogFields(): array
+    {
+        return ['name', 'is_active'];
+    }
 
     /**
      * @return array<string, string>
