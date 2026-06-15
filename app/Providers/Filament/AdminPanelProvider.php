@@ -39,7 +39,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile(EditProfile::class, isSimple: false)
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
-            ->font('Ubuntu')
+            ->font('Inter')
             ->colors([
                 'primary' => Color::Amber,
                 'verified' => Color::hex('#1e1242'),
