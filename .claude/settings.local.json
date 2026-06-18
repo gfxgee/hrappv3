@@ -43,7 +43,8 @@
       "PowerShell(php artisan test --compact --% --filter=\"DtrServiceTest|ClockInOutWidgetTest\" 2>&1 | Select-Object -Last 12)",
       "Bash(grep -nA4 \"migrations_paths\\\\|settings =>\" config/settings.php)",
       "Bash(sed -n '20,26p' config/settings.php)",
-      "Bash(sed -n '1,20p' config/settings.php)"
+      "Bash(sed -n '1,20p' config/settings.php)",
+      "Bash(grep -E \"\\\\.php$\")"
     ]
   }
 }
