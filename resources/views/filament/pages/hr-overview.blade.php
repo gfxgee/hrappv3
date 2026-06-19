@@ -2,6 +2,9 @@
     {{-- Org-wide stat cards --}}
     @livewire(\App\Filament\Widgets\Hr\HrStatsWidget::class)
 
+    {{-- Team mood today --}}
+    @livewire(\App\Filament\Widgets\Hr\MoodTodayWidget::class)
+
     {{-- Charts row --}}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
         <div class="lg:col-span-2 space-y-6">

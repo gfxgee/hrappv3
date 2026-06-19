@@ -53,4 +53,7 @@
             @livewire(\App\Filament\Widgets\Employee\MyTeamTodayWidget::class)
         </div>
     </div>
+
+    {{-- Mood check-in: floating bubble + auto-opening modal (renders as a fixed overlay) --}}
+    @livewire(\App\Filament\Widgets\MoodCheckInWidget::class)
 </x-filament-panels::page>
