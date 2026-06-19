@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\User;
+use App\Services\CelebrationService;
 use Filament\Facades\Filament;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -53,6 +54,19 @@ class Dashboard extends BaseDashboard
     public function departmentName(): ?string
     {
         return auth()->user()?->department?->name;
+    }
+
+    /**
+     * Today's celebration for the signed-in employee (birthday or work
+     * anniversary), shown as a festive greeting on their own dashboard.
+     *
+     * @return array{type: string, emoji: string, message: string}|null
+     */
+    public function celebration(): ?array
+    {
+        $user = auth()->user();
+
+        return $user ? app(CelebrationService::class)->celebrationFor($user) : null;
     }
 
     /**

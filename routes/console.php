@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\NotifyCelebrations;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,3 +11,6 @@ Artisan::command('inspire', function () {
 
 // Prune activity-log entries older than the configured retention (365 days).
 Schedule::command('activitylog:clean')->daily();
+
+// Announce today's birthdays and work anniversaries each morning.
+Schedule::command(NotifyCelebrations::class)->dailyAt('08:00');

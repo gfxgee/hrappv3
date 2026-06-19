@@ -5,6 +5,7 @@ namespace App\Filament\Widgets\Employee;
 use App\Filament\Widgets\Concerns\ShowsHolidayDetails;
 use App\Models\Holiday;
 use App\Models\User;
+use App\Services\CelebrationService;
 use App\Settings\GeneralSettings;
 use Carbon\CarbonInterface;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -14,7 +15,6 @@ use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Throwable;
 
 /**
  * Merged upcoming events — birthdays, work anniversaries, and holidays —
@@ -170,23 +170,6 @@ class ComingUpWidget extends Widget implements HasActions, HasSchemas
      */
     protected function nextOccurrence(?string $date): ?CarbonInterface
     {
-        if (blank($date)) {
-            return null;
-        }
-
-        try {
-            $parsed = Carbon::parse($date);
-        } catch (Throwable) {
-            return null;
-        }
-
-        $monthAnchor = today()->month($parsed->month);
-        $next = $monthAnchor->day(min($parsed->day, $monthAnchor->daysInMonth));
-
-        if ($next->lessThan(today())) {
-            $next = $next->addYear();
-        }
-
-        return $next;
+        return CelebrationService::nextAnnualOccurrence($date);
     }
 }

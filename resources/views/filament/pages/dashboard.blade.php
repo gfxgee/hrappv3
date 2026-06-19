@@ -1,4 +1,13 @@
 <x-filament-panels::page>
+    {{-- Celebration greeting (the signed-in employee's own birthday / anniversary) --}}
+    @php($celebration = $this->celebration())
+    @if ($celebration)
+        <div class="flex items-center gap-3 rounded-xl bg-gradient-to-r from-amber-100 to-pink-100 px-4 py-3 text-amber-900 ring-1 ring-amber-600/20 dark:from-amber-500/15 dark:to-pink-500/15 dark:text-amber-100 dark:ring-amber-400/30">
+            <span class="text-2xl">{{ $celebration['emoji'] }}</span>
+            <p class="text-sm font-semibold">{{ $celebration['message'] }}</p>
+        </div>
+    @endif
+
     {{-- Greeting header --}}
     <div class="flex flex-wrap items-end justify-between gap-2">
         <div>
