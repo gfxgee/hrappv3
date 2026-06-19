@@ -5,6 +5,9 @@
         ? Announcement::liveForUser(auth()->user())
         : collect();
 
+    $urgent = $announcements->where('is_urgent', true);
+    $normal = $announcements->where('is_urgent', false);
+
     // Tailwind classes per announcement type (light + dark).
     $styles = [
         'info' => 'bg-blue-100 text-blue-800 ring-blue-600/20 dark:bg-blue-500/10 dark:text-blue-200 dark:ring-blue-400/30',
@@ -14,9 +17,34 @@
     ];
 @endphp
 
-@if ($announcements->isNotEmpty())
+@if ($urgent->isNotEmpty())
+    {{-- Urgent alerts: prominent, sticky, and not dismissible — they stay until HR deactivates or they expire. --}}
+    <div class="sticky top-0 z-20 mt-10 space-y-2">
+        @foreach ($urgent as $announcement)
+            <div
+                class="flex items-start gap-3 rounded-xl border-2 border-red-500 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-md dark:border-red-500/70 dark:bg-red-500/15 dark:text-red-100"
+                role="alert"
+            >
+                <x-filament::icon
+                    icon="heroicon-o-exclamation-triangle"
+                    class="mt-0.5 h-6 w-6 shrink-0 animate-pulse text-red-600 dark:text-red-300"
+                />
+
+                <div class="min-w-0 flex-1 [&_a]:font-medium [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-red-600 dark:text-red-300">Urgent alert</p>
+                    @if (filled($announcement->title))
+                        <p class="font-semibold">{{ $announcement->title }}</p>
+                    @endif
+                    <div class="[&>p]:my-0">{!! $announcement->message !!}</div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+@endif
+
+@if ($normal->isNotEmpty())
     <div class="mb-4 space-y-2 mt-10">
-        @foreach ($announcements as $announcement)
+        @foreach ($normal as $announcement)
             @php($key = 'announcement-'.$announcement->id.'-'.optional($announcement->updated_at)->timestamp)
             @php($classes = $styles[$announcement->type->value] ?? $styles['info'])
 

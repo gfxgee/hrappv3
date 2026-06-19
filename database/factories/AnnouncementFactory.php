@@ -23,6 +23,7 @@ class AnnouncementFactory extends Factory
             'message' => '<p>'.fake()->sentence().'</p>',
             'type' => fake()->randomElement(AnnouncementType::cases()),
             'is_active' => true,
+            'is_urgent' => false,
             'starts_at' => null,
             'ends_at' => null,
         ];
@@ -31,5 +32,10 @@ class AnnouncementFactory extends Factory
     public function inactive(): static
     {
         return $this->state(fn (): array => ['is_active' => false]);
+    }
+
+    public function urgent(): static
+    {
+        return $this->state(fn (): array => ['is_urgent' => true]);
     }
 }

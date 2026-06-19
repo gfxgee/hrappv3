@@ -29,6 +29,14 @@ class AnnouncementsTable
                     ->description(fn ($record): string => strip_tags((string) $record->message))
                     ->wrap()
                     ->searchable(),
+                IconColumn::make('is_urgent')
+                    ->label('Urgent')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-exclamation-triangle')
+                    ->trueColor('danger')
+                    ->falseIcon('heroicon-o-minus')
+                    ->falseColor('gray')
+                    ->sortable(),
                 ToggleColumn::make('is_active')
                     ->label('Active')
                     ->sortable(),
@@ -55,6 +63,8 @@ class AnnouncementsTable
                     ->options(AnnouncementType::toArray()),
                 TernaryFilter::make('is_active')
                     ->label('Active'),
+                TernaryFilter::make('is_urgent')
+                    ->label('Urgent'),
             ])
             ->recordActions([
                 EditAction::make(),

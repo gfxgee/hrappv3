@@ -28,6 +28,10 @@ class AnnouncementForm
                     ->label('Active')
                     ->helperText('Inactive announcements never show, regardless of dates.')
                     ->default(true),
+                Toggle::make('is_urgent')
+                    ->label('Urgent alert')
+                    ->helperText('Pins it to the top as a prominent, non-dismissible alert (e.g. typhoon) and notifies every employee.')
+                    ->default(false),
                 DateTimePicker::make('starts_at')
                     ->label('Show from')
                     ->seconds(false)
