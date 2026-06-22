@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Filament\Resources\AttendanceCorrectionRequests\AttendanceCorrectionRequestResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\OverTimeRequests\OverTimeRequestResource;
+use App\Models\AttendanceCorrectionRequest;
 use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
@@ -86,6 +88,42 @@ class RequestNotifier
                 Action::make('review')
                     ->label('Review')
                     ->url(OverTimeRequestResource::getUrl('edit', ['record' => $request]))
+                    ->markAsRead(),
+            ])
+            ->sendToDatabase($recipients);
+    }
+
+    /**
+     * Notify the approvers that an attendance correction request was filed.
+     */
+    public function correctionFiled(AttendanceCorrectionRequest $request): void
+    {
+        $requester = $request->user;
+
+        if ($requester === null) {
+            return;
+        }
+
+        $recipients = $this->recipientsFor($requester);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::make()
+            ->title('New attendance correction')
+            ->icon(Heroicon::OutlinedPencilSquare)
+            ->iconColor('info')
+            ->body(sprintf(
+                '%s requested a correction (%s) for %s.',
+                $requester->name,
+                $request->correction_type?->label() ?? 'attendance',
+                $request->corrected_at?->format('M j, Y H:i') ?? '',
+            ))
+            ->actions([
+                Action::make('review')
+                    ->label('Review')
+                    ->url(AttendanceCorrectionRequestResource::getUrl('index'))
                     ->markAsRead(),
             ])
             ->sendToDatabase($recipients);

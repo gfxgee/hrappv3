@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AttendanceCorrectionRequest;
 use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
@@ -44,6 +45,33 @@ class TeamsNotifier
     public function overtimeCancelled(OverTimeRequest $request): void
     {
         $this->sendOvertime($request, 'overtime.cancelled', 'cancelled their');
+    }
+
+    public function correctionFiled(AttendanceCorrectionRequest $request): void
+    {
+        $user = $request->user;
+        $type = $request->correction_type?->label() ?? 'Attendance';
+
+        $this->send([
+            'event' => 'attendance_correction.filed',
+            'category' => 'Attendance Correction',
+            'icon' => '✏️',
+            'employee' => $user?->name,
+            'email' => $user?->email,
+            'photo' => $user?->getFilamentAvatarUrl(),
+            'department' => $user?->department?->name,
+            'request_date' => $request->corrected_at?->toDateString(),
+            'approver' => $this->approverEmail($user),
+            'reason' => $request->reason,
+            'status' => $request->status?->label(),
+            'filed_at' => $request->created_at?->toIso8601String(),
+            'text' => sprintf(
+                '✏️ %s filed an attendance correction (%s) for %s.',
+                $user?->name ?? 'An employee',
+                $type,
+                $request->corrected_at?->format('M j, Y H:i') ?? '',
+            ),
+        ]);
     }
 
     protected function sendLeave(LeaveRequest $request, string $event, string $verb): void
