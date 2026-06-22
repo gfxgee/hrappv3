@@ -5,10 +5,10 @@ namespace App\Enum;
 enum Mood: string
 {
     case HAPPY = 'happy';
-    case EXCITED = 'excited';
-    case SAD = 'sad';
+    case CALM = 'calm';
     case STRESSED = 'stressed';
     case SICK = 'sick';
+    case TIRED = 'tired';
 
     /**
      * Human-readable label.
@@ -17,10 +17,10 @@ enum Mood: string
     {
         return match ($this) {
             self::HAPPY => 'Happy',
-            self::EXCITED => 'Excited',
-            self::SAD => 'Sad',
+            self::CALM => 'Calm',
             self::STRESSED => 'Stressed',
             self::SICK => 'Sick',
+            self::TIRED => 'Tired',
         };
     }
 
@@ -31,10 +31,10 @@ enum Mood: string
     {
         return match ($this) {
             self::HAPPY => '😊',
-            self::EXCITED => '🤩',
-            self::SAD => '😢',
+            self::CALM => '😌',
             self::STRESSED => '😫',
-            self::SICK => '🤒',
+            self::TIRED => '😴',
+            self::SICK => '🤒'
         };
     }
 
