@@ -4,14 +4,7 @@
     $notoBase = 'https://fonts.gstatic.com/s/e/notoemoji/latest';
 @endphp
 
-<style>
-    /* Hide the animated player until the web component is defined, and show the
-       plain-emoji fallback in the meantime (or if the CDN never loads). */
-    lottie-player:not(:defined) { display: none; }
-    lottie-player:defined + .mood-fallback { display: none; }
-    .mood-emoji-slot { display: inline-flex; align-items: center; justify-content: center; }
-</style>
-
+{{-- Single root element required by Livewire — keep the <style> inside it. --}}
 <div
     x-data="{
         open: false,
@@ -46,6 +39,14 @@
     }"
     x-on:mood-logged.window="open = false"
 >
+    <style>
+        /* Hide the animated player until the web component is defined, and show
+           the plain-emoji fallback in the meantime (or if the CDN never loads). */
+        lottie-player:not(:defined) { display: none; }
+        lottie-player:defined + .mood-fallback { display: none; }
+        .mood-emoji-slot { display: inline-flex; align-items: center; justify-content: center; }
+    </style>
+
     {{-- Floating bubble (bottom-right) — always available to (re)open the picker --}}
     <button
         type="button"
