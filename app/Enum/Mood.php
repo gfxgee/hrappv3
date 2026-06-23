@@ -45,8 +45,8 @@ enum Mood: string
     {
         return match ($this) {
             self::HAPPY => 'success',
-            self::EXCITED => 'info',
-            self::SAD => 'warning',
+            self::CALM=> 'info',
+            self::TIRED => 'warning',
             self::STRESSED => 'danger',
             self::SICK => 'gray',
         };
@@ -59,8 +59,8 @@ enum Mood: string
     public function needsAttention(): bool
     {
         return match ($this) {
-            self::SAD, self::STRESSED, self::SICK => true,
-            self::HAPPY, self::EXCITED => false,
+            self::CALM, self::STRESSED  => true, self::SICK => true,
+            self::HAPPY, self::TIRED=> false,
         };
     }
 

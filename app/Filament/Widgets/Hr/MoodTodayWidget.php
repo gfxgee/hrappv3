@@ -69,7 +69,7 @@ class MoodTodayWidget extends StatsOverviewWidget
      */
     protected function needsAttentionStat(int $attention, Collection $moods): Stat
     {
-        $breakdown = collect([Mood::STRESSED, Mood::SAD, Mood::SICK])
+        $breakdown = collect([Mood::STRESSED, Mood::TIRED, Mood::SICK])
             ->map(fn (Mood $mood): string => $moods->filter(fn (Mood $m): bool => $m === $mood)->count()
                 .' '.$mood->emoji())
             ->implode('  ');
