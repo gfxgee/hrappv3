@@ -198,11 +198,8 @@ class FileLeaveRequest extends Page implements HasTable
                     ->requiresConfirmation()
                     ->modalHeading('Cancel this leave request?')
                     ->modalDescription('The credit will be restored for tracked leave types.')
-                    ->visible(fn (LeaveRequest $record): bool => in_array(
-                        $record->status,
-                        [AttendanceStatus::FOR_APPROVAL, AttendanceStatus::APPROVED],
-                        true,
-                    ))
+                    // Only pending requests can be cancelled; once approved it's locked.
+                    ->visible(fn (LeaveRequest $record): bool => $record->status === AttendanceStatus::FOR_APPROVAL)
                     ->action(fn (LeaveRequest $record) => $record->update([
                         'status' => AttendanceStatus::CANCELLED->value,
                     ])),

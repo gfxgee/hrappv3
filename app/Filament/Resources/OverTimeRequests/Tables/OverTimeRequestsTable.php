@@ -11,6 +11,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -26,6 +27,9 @@ class OverTimeRequestsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            // Clicking a row opens a read-only view modal instead of jumping to edit.
+            ->recordAction('view')
+            ->recordUrl(null)
             // Only list overtime filed by active employees.
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereHas(
                 'user',
@@ -92,6 +96,7 @@ class OverTimeRequestsTable
                     ->options(AttendanceStatus::toArray()),
             ])
             ->recordActions([
+                ViewAction::make(),
                 Action::make('approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')

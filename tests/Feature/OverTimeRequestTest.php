@@ -185,6 +185,16 @@ it('rejects an overtime request', function () {
     expect($ot->refresh()->status)->toBe(AttendanceStatus::REJECTED);
 });
 
+it('opens a read-only view modal from the overtime list', function () {
+    $this->actingAs(overtimeManager('hr'));
+    $ot = OverTimeRequest::factory()->create();
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->assertTableActionVisible('view', $ot)
+        ->callTableAction('view', $ot)
+        ->assertHasNoTableActionErrors();
+});
+
 it('renders the file overtime page', function () {
     $this->actingAs(User::factory()->create());
 
