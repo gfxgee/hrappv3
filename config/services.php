@@ -44,6 +44,12 @@ return [
         'default_approver' => env('TEAMS_DEFAULT_APPROVER', 'gee@digitalfeet.com'),
     ],
 
+    'biometric_webhook' => [
+        // Shared secret the biometric/SharePoint Power Automate flow must send
+        // in the X-Webhook-Secret header. Keep it in .env only.
+        'secret' => env('BIOMETRIC_WEBHOOK_SECRET'),
+    ],
+
     'microsoft' => [
         'client_id' => env('MICROSOFT_CLIENT_ID'),
         'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
