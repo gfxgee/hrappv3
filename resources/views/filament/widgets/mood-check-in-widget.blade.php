@@ -1,13 +1,29 @@
 @php
     $today = today()->toDateString();
     $current = $this->todaysMood();
+    $notoBase = 'https://fonts.gstatic.com/s/e/notoemoji/latest';
 @endphp
+
+<style>
+    /* Hide the animated player until the web component is defined, and show the
+       plain-emoji fallback in the meantime (or if the CDN never loads). */
+    lottie-player:not(:defined) { display: none; }
+    lottie-player:defined + .mood-fallback { display: none; }
+    .mood-emoji-slot { display: inline-flex; align-items: center; justify-content: center; }
+</style>
 
 <div
     x-data="{
         open: false,
         dismissKey: 'mood-checkin-dismissed-{{ $today }}',
         init() {
+            if (! window.__notoLottieLoaded) {
+                window.__notoLottieLoaded = true;
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/@lottiefiles/lottie-player@2.0.12/dist/lottie-player.js';
+                script.async = true;
+                document.head.appendChild(script);
+            }
             @if (! $current)
                 if (sessionStorage.getItem(this.dismissKey) !== '1') {
                     this.open = true;
@@ -18,6 +34,15 @@
             this.open = false;
             sessionStorage.setItem(this.dismissKey, '1');
         },
+        playEmoji(el) {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                return;
+            }
+            el.querySelector('lottie-player')?.play();
+        },
+        stopEmoji(el) {
+            el.querySelector('lottie-player')?.stop();
+        },
     }"
     x-on:mood-logged.window="open = false"
 >
@@ -25,11 +50,22 @@
     <button
         type="button"
         x-on:click="open = true"
+        x-on:mouseenter="playEmoji($el)"
+        x-on:mouseleave="stopEmoji($el)"
         class="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow-lg ring-1 ring-gray-950/10 transition hover:scale-105 hover:shadow-xl dark:bg-gray-800 dark:ring-white/10"
         aria-label="Mood check-in"
         title="{{ $current ? 'Update your mood' : 'How are you feeling today?' }}"
     >
-        <span>{{ $current?->emoji() ?? '😊' }}</span>
+        <span class="mood-emoji-slot h-9 w-9">
+            <lottie-player
+                src="{{ $notoBase }}/{{ $current?->lottieCodepoint() ?? '1f60a' }}/lottie.json"
+                background="transparent"
+                speed="1"
+                loop
+                style="width: 100%; height: 100%;"
+            ></lottie-player>
+            <span class="mood-fallback">{{ $current?->emoji() ?? '😊' }}</span>
+        </span>
     </button>
 
     {{-- Modal --}}
@@ -85,13 +121,24 @@
                     <button
                         type="button"
                         wire:click="logMood('{{ $mood['value'] }}')"
+                        x-on:mouseenter="playEmoji($el)"
+                        x-on:mouseleave="stopEmoji($el)"
                         @class([
                             'flex flex-col items-center gap-1.5 rounded-xl border p-3 transition hover:-translate-y-0.5 hover:border-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10',
                             'border-primary-500 bg-primary-50 dark:border-primary-400 dark:bg-primary-500/10' => $current?->value === $mood['value'],
                             'border-gray-200 dark:border-white/10' => $current?->value !== $mood['value'],
                         ])
                     >
-                        <span class="text-3xl">{{ $mood['emoji'] }}</span>
+                        <span class="mood-emoji-slot h-10 w-10 text-3xl">
+                            <lottie-player
+                                src="{{ $notoBase }}/{{ $mood['lottie'] }}/lottie.json"
+                                background="transparent"
+                                speed="1"
+                                loop
+                                style="width: 100%; height: 100%;"
+                            ></lottie-player>
+                            <span class="mood-fallback">{{ $mood['emoji'] }}</span>
+                        </span>
                         <span class="text-xs font-medium text-gray-700 dark:text-gray-300">{{ $mood['label'] }}</span>
                     </button>
                 @endforeach

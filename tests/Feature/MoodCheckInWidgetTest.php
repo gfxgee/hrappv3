@@ -31,11 +31,11 @@ it('updates today\'s check-in instead of creating a duplicate', function () {
     $this->actingAs($user);
 
     Livewire::test(MoodCheckInWidget::class)
-        ->call('logMood', Mood::SAD->value)
-        ->call('logMood', Mood::EXCITED->value);
+        ->call('logMood', Mood::STRESSED->value)
+        ->call('logMood', Mood::CALM->value);
 
     expect(MoodCheckIn::query()->count())->toBe(1)
-        ->and(MoodCheckIn::query()->first()->mood)->toBe(Mood::EXCITED);
+        ->and(MoodCheckIn::query()->first()->mood)->toBe(Mood::CALM);
 });
 
 it('ignores an invalid mood value', function () {

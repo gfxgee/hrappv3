@@ -39,13 +39,28 @@ enum Mood: string
     }
 
     /**
+     * Unicode codepoint(s) used to build the Noto animated-emoji (Lottie) URL:
+     * https://fonts.gstatic.com/s/e/notoemoji/latest/{codepoint}/lottie.json
+     */
+    public function lottieCodepoint(): string
+    {
+        return match ($this) {
+            self::HAPPY => '1f60a',
+            self::CALM => '1f60c',
+            self::STRESSED => '1f62b',
+            self::TIRED => '1f634',
+            self::SICK => '1f912',
+        };
+    }
+
+    /**
      * Filament colour name for badges and stats.
      */
     public function color(): string
     {
         return match ($this) {
             self::HAPPY => 'success',
-            self::CALM=> 'info',
+            self::CALM => 'info',
             self::TIRED => 'warning',
             self::STRESSED => 'danger',
             self::SICK => 'gray',
@@ -59,8 +74,8 @@ enum Mood: string
     public function needsAttention(): bool
     {
         return match ($this) {
-            self::CALM, self::STRESSED  => true, self::SICK => true,
-            self::HAPPY, self::TIRED=> false,
+            self::CALM, self::STRESSED => true, self::SICK => true,
+            self::HAPPY, self::TIRED => false,
         };
     }
 

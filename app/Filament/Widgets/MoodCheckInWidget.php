@@ -61,7 +61,7 @@ class MoodCheckInWidget extends Widget
     /**
      * Mood options for the picker.
      *
-     * @return list<array{value: string, label: string, emoji: string}>
+     * @return list<array{value: string, label: string, emoji: string, lottie: string}>
      */
     public function moods(): array
     {
@@ -69,6 +69,7 @@ class MoodCheckInWidget extends Widget
             'value' => $mood->value,
             'label' => $mood->label(),
             'emoji' => $mood->emoji(),
+            'lottie' => $mood->lottieCodepoint(),
         ], Mood::cases());
     }
 }
