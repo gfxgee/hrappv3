@@ -125,7 +125,7 @@
                     <td>{{ $row['date']->format('M d') }}</td>
                     <td class="muted">{{ $row['day'] }}</td>
                     <td>{{ $row['time_in'] ?? '—' }}</td>
-                    <td>{{ $row['time_out'] ?? '—' }}</td>
+                    <td>{{ $row['time_out'] ?? '—' }}{{ $row['overnight'] ? ' (+1)' : '' }}</td>
                     <td class="num">{{ $row['hours'] ?: '—' }}</td>
                     <td class="num">{{ $row['late'] ? $humanMinutes($row['late']) : '—' }}</td>
                     <td class="num">{{ $row['undertime'] ? $humanMinutes($row['undertime']) : '—' }}</td>

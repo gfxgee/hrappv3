@@ -17,6 +17,13 @@ class AttendancePunchService
     public const DEVICE = 'biometric';
 
     /**
+     * How far back an open clock-in stays "current" when auto-resolving a SCAN.
+     * Covers a night shift plus slack so a morning scan closes the prior
+     * evening's clock-in, without pairing across a long-stale missed punch.
+     */
+    public const OPEN_SHIFT_LOOKBACK_HOURS = 18;
+
+    /**
      * @param  array{external_id: string, title: string, email: string, punched_at: Carbon}  $punch
      * @return array{status: 'created'|'duplicate'|'unmatched', type?: string, attendance_log_id?: int}
      */
@@ -64,13 +71,17 @@ class AttendancePunchService
 
     protected function autoType(int $userId, Carbon $punchedAt): string
     {
-        $lastPunchToday = AttendanceLog::query()
+        // Look back over a window rather than the calendar day so an
+        // early-morning scan closes a clock-in from the previous evening
+        // (night shift) instead of wrongly opening a new one.
+        $lastPunch = AttendanceLog::query()
             ->where('user_id', $userId)
-            ->whereDate('created_at', $punchedAt->toDateString())
+            ->where('created_at', '<=', $punchedAt)
+            ->where('created_at', '>=', $punchedAt->copy()->subHours(self::OPEN_SHIFT_LOOKBACK_HOURS))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->value('type');
 
-        return $lastPunchToday === 'clockin' ? 'clockout' : 'clockin';
+        return $lastPunch === 'clockin' ? 'clockout' : 'clockin';
     }
 }

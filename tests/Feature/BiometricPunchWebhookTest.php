@@ -95,6 +95,21 @@ it('resolves a SCAN to clock-in then clock-out across the day', function () {
     expect(AttendanceLog::query()->pluck('type')->all())->toBe(['clockin', 'clockout']);
 });
 
+it('resolves an early-morning SCAN as a clock-out for the prior evening shift', function () {
+    User::factory()->create(['email' => 'vevien@digitalfeet.com']);
+
+    // Night-shift clock-in the previous evening...
+    postPunch(punchPayload(['id' => 1, 'title' => 'SCAN', 'punched_at' => '2026-06-01T22:00:00Z']))
+        ->assertJson(['type' => 'clockin']);
+
+    // ...and an early-morning SCAN the next day closes it, despite the date change.
+    postPunch(punchPayload(['id' => 2, 'title' => 'SCAN', 'punched_at' => '2026-06-02T06:00:00Z']))
+        ->assertJson(['type' => 'clockout']);
+
+    expect(AttendanceLog::query()->orderBy('created_at')->pluck('type')->all())
+        ->toBe(['clockin', 'clockout']);
+});
+
 it('is idempotent on re-delivery of the same punch', function () {
     User::factory()->create(['email' => 'vevien@digitalfeet.com']);
 

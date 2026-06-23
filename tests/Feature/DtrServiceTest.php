@@ -113,6 +113,84 @@ it('marks approved leave days', function () {
         ->and($data['totals']['leave'])->toBe(1);
 });
 
+it('attributes an overnight clock-out to the day the shift started', function () {
+    $user = User::factory()->create();
+
+    logAt($user, 'clockin', '2026-06-01 14:49:00');
+    logAt($user, 'clockout', '2026-06-02 00:09:00'); // crosses midnight
+
+    $rows = collect(app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-02'))['rows'])
+        ->keyBy(fn (array $row): string => $row['date']->toDateString());
+
+    // The shift is logged on its start day, with the next-day clock-out flagged.
+    expect($rows['2026-06-01']['time_in'])->toBe('02:49 PM')
+        ->and($rows['2026-06-01']['time_out'])->toBe('12:09 AM')
+        ->and($rows['2026-06-01']['overnight'])->toBeTrue()
+        ->and($rows['2026-06-01']['hours'])->toBe(8.33) // 9h20m gross − 1h lunch
+        ->and($rows['2026-06-01']['status'])->toBe('Present');
+
+    // The next day is NOT polluted by that stranded early-morning clock-out.
+    expect($rows['2026-06-02']['time_in'])->toBeNull()
+        ->and($rows['2026-06-02']['time_out'])->toBeNull();
+});
+
+it('does not steal the overnight clock-out from the next day\'s own shift', function () {
+    $user = User::factory()->create();
+
+    logAt($user, 'clockin', '2026-06-01 14:49:00');
+    logAt($user, 'clockout', '2026-06-02 00:09:00');
+    logAt($user, 'clockin', '2026-06-02 14:39:00'); // next day's own shift
+    logAt($user, 'clockout', '2026-06-03 02:00:00');
+
+    $rows = collect(app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-02'))['rows'])
+        ->keyBy(fn (array $row): string => $row['date']->toDateString());
+
+    expect($rows['2026-06-01']['time_in'])->toBe('02:49 PM')
+        ->and($rows['2026-06-01']['time_out'])->toBe('12:09 AM')
+        ->and($rows['2026-06-02']['time_in'])->toBe('02:39 PM')
+        ->and($rows['2026-06-02']['time_out'])->toBe('02:00 AM')
+        ->and($rows['2026-06-02']['overnight'])->toBeTrue();
+});
+
+it('pairs a shift that crosses the end of the requested range', function () {
+    $user = User::factory()->create();
+
+    logAt($user, 'clockin', '2026-06-01 22:00:00');
+    logAt($user, 'clockout', '2026-06-02 06:00:00'); // outside the single-day range
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['time_in'])->toBe('10:00 PM')
+        ->and($row['time_out'])->toBe('06:00 AM')
+        ->and($row['overnight'])->toBeTrue()
+        ->and($row['hours'])->toBe(7.0); // 8h gross − 1h lunch
+});
+
+it('does not show a prior night\'s early clock-out as this day\'s clock-out', function () {
+    $user = User::factory()->create();
+
+    logAt($user, 'clockin', '2026-06-01 22:00:00');
+    logAt($user, 'clockout', '2026-06-02 06:00:00'); // belongs to Jun 1's shift
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-02'), Carbon::parse('2026-06-02'))['rows'][0];
+
+    expect($row['time_in'])->toBeNull()
+        ->and($row['time_out'])->toBeNull();
+});
+
+it('still surfaces an orphan clock-out on its own day', function () {
+    $user = User::factory()->create();
+
+    logAt($user, 'clockout', '2026-06-01 17:00:00'); // no matching clock-in anywhere
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['time_in'])->toBeNull()
+        ->and($row['time_out'])->toBe('05:00 PM')
+        ->and($row['hours'])->toBe(0.0)
+        ->and($row['status'])->toBe('Present');
+});
+
 it('sums approved overtime hours onto the day', function () {
     $user = User::factory()->create();
     OverTimeRequest::factory()->for($user)->create([

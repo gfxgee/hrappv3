@@ -94,7 +94,12 @@
                             <td class="py-1.5 pr-3 whitespace-nowrap text-gray-700 dark:text-gray-200">{{ $row['date']->format('M d') }}</td>
                             <td class="py-1.5 pr-3 text-gray-500 dark:text-gray-400">{{ $row['day'] }}</td>
                             <td class="py-1.5 pr-3 tabular-nums">{{ $row['time_in'] ?? '—' }}</td>
-                            <td class="py-1.5 pr-3 tabular-nums">{{ $row['time_out'] ?? '—' }}</td>
+                            <td class="py-1.5 pr-3 tabular-nums whitespace-nowrap">
+                                {{ $row['time_out'] ?? '—' }}
+                                @if ($row['overnight'])
+                                    <span class="ml-1 rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400" title="Clocked out the next day">+1</span>
+                                @endif
+                            </td>
                             <td class="py-1.5 pr-3 text-right tabular-nums">{{ $row['hours'] ?: '—' }}</td>
                             <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['late'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['late'] ? $this->humanMinutes($row['late']) : '—' }}</td>
                             <td class="py-1.5 pr-3 text-right tabular-nums {{ $row['undertime'] ? 'text-warning-600 dark:text-warning-400' : 'text-gray-400' }}">{{ $row['undertime'] ? $this->humanMinutes($row['undertime']) : '—' }}</td>
