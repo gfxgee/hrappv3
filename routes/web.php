@@ -2,9 +2,22 @@
 
 use App\Http\Controllers\Auth\MicrosoftSsoController;
 use App\Http\Controllers\DtrPdfController;
+use App\Http\Controllers\IclockController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+
+// ZKTeco biometric scanner endpoints (no auth — the device speaks plain HTTP
+// over a static IP and cannot log in). Scans are stored raw and synced into
+// attendance_logs. The public status page is a non-sensitive heartbeat; the
+// detail page is gated to HR/admins inside the controller.
+Route::get('iclock/cdata', [IclockController::class, 'handshake']);
+Route::post('iclock/cdata', [IclockController::class, 'receiveRecords']);
+Route::get('iclock/getrequest', [IclockController::class, 'getrequest']);
+Route::get('iclock/status', [IclockController::class, 'status'])->name('iclock.status');
+Route::get('iclock/status/detail', [IclockController::class, 'statusDetail'])
+    ->middleware('auth')
+    ->name('iclock.status.detail');
 
 // Printable Daily Time Record PDF (authorization handled in the controller).
 Route::get('dtr/pdf', DtrPdfController::class)
