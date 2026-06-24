@@ -73,18 +73,36 @@ class ClockInOutWidget extends Widget
     }
 
     /**
-     * The clock-in for the current shift — the most recent clock-in within the
-     * lookback window. Returns null when there's no recent clock-in.
+     * The clock-in for the *current* shift to display:
+     *  - an open shift (no clock-out after it) always shows, so a night shift
+     *    spanning midnight stays visible; otherwise
+     *  - today's clock-in, if any.
+     *
+     * A shift that was completed on a previous day is intentionally not shown,
+     * so the widget resets to blank on a new day until the next clock-in.
      */
     public function getClockInLog(): ?AttendanceLog
     {
-        return AttendanceLog::query()
+        $recent = AttendanceLog::query()
             ->where('user_id', auth()->id())
             ->where('type', 'clockin')
             ->where('created_at', '>=', now()->subHours(self::ACTIVE_SHIFT_LOOKBACK_HOURS))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->first();
+
+        if ($recent === null) {
+            return null;
+        }
+
+        $isOpen = ! AttendanceLog::query()
+            ->where('user_id', auth()->id())
+            ->where('type', 'clockout')
+            ->where('id', '>', $recent->id)
+            ->exists();
+
+        // Open shift always shows; a completed shift only while it's still today.
+        return ($isOpen || $recent->created_at->isToday()) ? $recent : null;
     }
 
     /**

@@ -142,6 +142,21 @@ it('allows clocking in again on a new day', function () {
     expect(AttendanceLog::where('user_id', $user->id)->where('type', 'clockin')->whereDate('created_at', today())->count())->toBe(1);
 });
 
+it('resets to a blank state on a new day after a completed shift', function () {
+    $this->travelTo('2026-06-10 09:00:00');
+    $user = auth()->user();
+
+    // Yesterday's completed shift — still inside the 24h look-back window.
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web', 'created_at' => '2026-06-09 15:00:00', 'updated_at' => '2026-06-09 15:00:00']);
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockout', 'device' => 'web', 'created_at' => '2026-06-09 23:00:00', 'updated_at' => '2026-06-09 23:00:00']);
+
+    $widget = new ClockInOutWidget;
+
+    expect($widget->getClockInLog())->toBeNull()
+        ->and($widget->getStatus())->toBe('not_started')
+        ->and($widget->canClockIn())->toBeTrue();
+});
+
 it('computes an elapsed time once clocked in', function () {
     $user = auth()->user();
 
