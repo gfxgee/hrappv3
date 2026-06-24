@@ -12,7 +12,8 @@
 @endphp
 
 <x-filament-widgets::widget>
-    <x-filament::section>
+    {{-- Poll so punches that arrive after load (e.g. a biometric sync) show up. --}}
+    <x-filament::section wire:poll.30s>
         <x-slot name="heading">Time Tracking</x-slot>
         <x-slot name="description">{{ $subtitle }}</x-slot>
 
@@ -59,7 +60,12 @@
                     >
                         Clock Out
                     </x-filament::button>
-                @elseif ($this->canClockIn())
+                @elseif ($status === 'done')
+                    <span class="inline-flex items-center gap-1.5 text-sm font-medium text-success-600 dark:text-success-400">
+                        <x-filament::icon icon="heroicon-o-check-circle" class="h-5 w-5" />
+                        Shift complete — see you next shift
+                    </span>
+                @else
                     <x-filament::button
                         wire:click="clockIn"
                         icon="heroicon-o-play-circle"
@@ -68,11 +74,6 @@
                     >
                         Clock In
                     </x-filament::button>
-                @else
-                    <span class="inline-flex items-center gap-1.5 text-sm font-medium text-success-600 dark:text-success-400">
-                        <x-filament::icon icon="heroicon-o-check-circle" class="h-5 w-5" />
-                        Shift complete — see you next shift
-                    </span>
                 @endif
             </div>
         </div>

@@ -157,6 +157,21 @@ it('resets to a blank state on a new day after a completed shift', function () {
         ->and($widget->canClockIn())->toBeTrue();
 });
 
+it('reflects a biometric clock-in made today as an in-progress shift', function () {
+    $this->travelTo('2026-06-24 10:00:00');
+    $user = auth()->user();
+
+    // An earlier (yesterday) biometric clock-in plus today's biometric clock-in, no clock-outs.
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'biometric', 'created_at' => '2026-06-23 18:36:00', 'updated_at' => '2026-06-23 18:36:00']);
+    $today = AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'biometric', 'created_at' => '2026-06-24 09:16:00', 'updated_at' => '2026-06-24 09:16:00']);
+
+    $widget = new ClockInOutWidget;
+
+    expect($widget->getStatus())->toBe('in_progress')
+        ->and($widget->getClockInLog()?->id)->toBe($today->id)
+        ->and($widget->getClockOutLog())->toBeNull();
+});
+
 it('does not pair an open clock-in with an earlier orphan clock-out', function () {
     $this->travelTo('2026-06-24 10:30:00');
     $user = auth()->user();

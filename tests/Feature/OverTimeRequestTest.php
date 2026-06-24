@@ -90,6 +90,41 @@ it('filters overtime by a selected employee', function () {
         ->assertCanNotSeeTableRecords([$bobOt]);
 });
 
+it('filters overtime requests by a date range', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $employee = User::factory()->create();
+    $inRange = OverTimeRequest::factory()->for($employee)->create(['request_date' => '2026-06-15']);
+    $outRange = OverTimeRequest::factory()->for($employee)->create(['request_date' => '2026-06-25']);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->filterTable('requested_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->assertCanSeeTableRecords([$inRange])
+        ->assertCanNotSeeTableRecords([$outRange]);
+});
+
+it('exports only the filtered overtime requests to CSV', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $alice = User::factory()->create(['name' => 'Alice', 'email' => 'alice@example.com']);
+    $bob = User::factory()->create(['name' => 'Bob', 'email' => 'bob@example.com']);
+    OverTimeRequest::factory()->for($alice)->create(['request_date' => '2026-06-15', 'hours' => 2]);
+    OverTimeRequest::factory()->for($bob)->create(['request_date' => '2026-06-25', 'hours' => 3]);
+
+    $response = Livewire::test(ListOverTimeRequests::class)
+        ->filterTable('requested_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->instance()
+        ->exportCsv();
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($csv)->toContain('Name', 'Email', 'Date') // header row
+        ->and($csv)->toContain('Alice')
+        ->and($csv)->not->toContain('Bob'); // outside the date range
+});
+
 it('summarizes hours separately for pending and approved overtime', function () {
     $this->actingAs(overtimeManager('hr'));
 
