@@ -95,38 +95,41 @@ class ClockInOutWidget extends Widget
             return null;
         }
 
-        $isOpen = ! AttendanceLog::query()
-            ->where('user_id', auth()->id())
-            ->where('type', 'clockout')
-            ->where('id', '>', $recent->id)
-            ->exists();
-
         // Open shift always shows; a completed shift only while it's still today.
-        return ($isOpen || $recent->created_at->isToday()) ? $recent : null;
+        return ($this->clockOutAfter($recent) === null || $recent->created_at->isToday()) ? $recent : null;
     }
 
     /**
-     * The clock-out for the current shift — a clock-out inserted AFTER the
-     * active clock-in. Returns null while the shift is still open.
-     *
-     * Uses `id > $in->id` rather than a created_at comparison because the
-     * default timestamp casts to seconds, so back-to-back writes (especially
-     * in tests) can produce identical created_at values. Auto-increment IDs
-     * are strictly monotonic, so "inserted after" is unambiguous.
+     * The clock-out that closes the current shift. Returns null while the shift
+     * is still open.
      */
     public function getClockOutLog(): ?AttendanceLog
     {
         $in = $this->getClockInLog();
 
-        if ($in === null) {
-            return null;
-        }
+        return $in === null ? null : $this->clockOutAfter($in);
+    }
 
+    /**
+     * The first clock-out that occurs at or after the given clock-in — i.e. the
+     * one that closes it. Matched by time so an earlier orphan clock-out can't
+     * pair with a later clock-in (e.g. an out-of-order biometric sync that has
+     * a higher id but an earlier timestamp). The id only breaks ties between
+     * punches written within the same second.
+     */
+    protected function clockOutAfter(AttendanceLog $in): ?AttendanceLog
+    {
         return AttendanceLog::query()
-            ->where('user_id', auth()->id())
+            ->where('user_id', $in->user_id)
             ->where('type', 'clockout')
-            ->where('id', '>', $in->id)
-            ->orderByDesc('id')
+            ->where(function ($query) use ($in): void {
+                $query->where('created_at', '>', $in->created_at)
+                    ->orWhere(function ($tie) use ($in): void {
+                        $tie->where('created_at', $in->created_at)->where('id', '>', $in->id);
+                    });
+            })
+            ->orderBy('created_at')
+            ->orderBy('id')
             ->first();
     }
 
