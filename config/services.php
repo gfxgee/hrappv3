@@ -52,6 +52,26 @@ return [
         'tenant' => env('MICROSOFT_TENANT_ID', 'common'),
     ],
 
+    'sharepoint' => [
+        // Mirror biometric punches into the SharePoint "Timekeeping" list via
+        // Microsoft Graph (app-only). Off unless explicitly enabled, so the
+        // scanner works with the local attendance_logs table alone by default.
+        'timekeeping_enabled' => env('SHAREPOINT_TIMEKEEPING_ENABLED', false),
+
+        // App-only (client credentials) registration. These can be the same
+        // credentials the DF Portal uses — the granted Graph application
+        // permissions belong to the registration, not to a single app.
+        'client_id' => env('SHAREPOINT_CLIENT_ID'),
+        'client_secret' => env('SHAREPOINT_CLIENT_SECRET'),
+        'tenant_id' => env('SHAREPOINT_TENANT_ID'),
+        'site_id' => env('SHAREPOINT_SITE_ID'),
+
+        // Display name of the target list and the internal name of its email
+        // column (DF Portal's "Email" column is internally named "Class").
+        'list_name' => env('SHAREPOINT_TIMEKEEPING_LIST', 'Timekeeping'),
+        'email_field' => env('SHAREPOINT_TIMEKEEPING_EMAIL_FIELD', 'Class'),
+    ],
+
     'gif' => [
         // Which GIF search provider to use: "giphy" or "tenor".
         'provider' => env('GIF_PROVIDER', 'giphy'),
