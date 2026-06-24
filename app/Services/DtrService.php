@@ -37,7 +37,7 @@ class DtrService
      * status (excluding cancelled) so the UI can color them.
      *
      * @return array{
-     *     rows: list<array{date: CarbonInterface, day: string, time_in: ?string, time_out: ?string, hours: float, late: int, undertime: int, overtime: float, overtime_breakdown: list<array{status: AttendanceStatus, hours: float}>, status: string}>,
+     *     rows: list<array{date: CarbonInterface, day: string, time_in: ?string, time_out: ?string, overnight: bool, hours: float, late: int, undertime: int, overtime: float, overtime_breakdown: list<array{status: AttendanceStatus, hours: float}>, status: string}>,
      *     totals: array{present: int, absent: int, leave: int, hours: float, late: int, undertime: int, overtime: float, overtime_pending: float},
      * }
      */
@@ -53,12 +53,18 @@ class DtrService
         /** @var list<int> $workingDays */
         $workingDays = $this->settings->workingDays;
 
-        $logsByDate = AttendanceLog::query()
+        // Pair punches into shifts (clock-in → next clock-out) over a window
+        // widened by a day on each side, so a shift that crosses midnight keeps
+        // its clock-out attached to the day it started — and an early-morning
+        // clock-out closing the previous day's shift never pollutes today.
+        $logs = AttendanceLog::query()
             ->where('user_id', $user->id)
-            ->whereBetween('created_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->whereBetween('created_at', [$from->copy()->subDay()->startOfDay(), $to->copy()->addDay()->endOfDay()])
             ->orderBy('created_at')
-            ->get()
-            ->groupBy(fn (AttendanceLog $log): string => $log->created_at->toDateString());
+            ->orderBy('id')
+            ->get();
+
+        [$shiftsByInDate, $orphanOutsByDate] = $this->pairShifts($logs);
 
         $holidays = Holiday::query()
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
@@ -88,26 +94,50 @@ class DtrService
             $key = $cursor->toDateString();
             $isWorkingDay = in_array($cursor->dayOfWeekIso, $workingDays, true);
 
-            /** @var Collection<int, AttendanceLog>|null $dayLogs */
-            $dayLogs = $logsByDate->get($key);
-            $in = $dayLogs?->firstWhere('type', 'clockin')?->created_at;
-            $out = $dayLogs?->where('type', 'clockout')->last()?->created_at;
+            /** @var Collection<int, array{in: CarbonInterface, out: ?CarbonInterface}>|null $dayShifts */
+            $dayShifts = $shiftsByInDate->get($key);
+
+            if ($dayShifts !== null) {
+                // First clock-in of the day starts the row; the last shift's
+                // clock-out ends it (which may land after midnight, or be null
+                // while the shift is still open).
+                $in = $dayShifts->first()['in'];
+                $out = $dayShifts->last()['out'];
+            } else {
+                // A clock-out with no matching clock-in (malformed data) still
+                // surfaces on its date so the day reads as Present, as before.
+                $in = null;
+                $out = $orphanOutsByDate->get($key)?->last();
+            }
+
+            // The employee's scheduled shift window for this day, if set. An
+            // "out" at or before "in" means the schedule runs past midnight.
+            $scheduledIn = filled($userData?->time_in) ? Carbon::parse($key.' '.$userData->time_in) : null;
+            $scheduledOut = filled($userData?->time_out) ? Carbon::parse($key.' '.$userData->time_out) : null;
+
+            if ($scheduledIn !== null && $scheduledOut !== null && $scheduledOut->lessThanOrEqualTo($scheduledIn)) {
+                $scheduledOut = $scheduledOut->addDay();
+            }
 
             $hours = 0.0;
             $late = 0;
             $undertime = 0;
 
             if ($in && $out) {
-                $gross = abs($in->diffInMinutes($out)) / 60;
+                // Clamp the worked span to the scheduled window so early
+                // clock-ins and late clock-outs (overtime) don't change paid
+                // regular hours. With no schedule set, the raw span is used.
+                $start = $scheduledIn !== null ? $in->copy()->max($scheduledIn) : $in;
+                $end = $scheduledOut !== null ? $out->copy()->min($scheduledOut) : $out;
+
+                $gross = $end->greaterThan($start) ? abs($start->diffInMinutes($end)) / 60 : 0.0;
                 $hours = max(0.0, round($gross >= $this->settings->lunchThresholdHours ? $gross - $this->settings->lunchHours : $gross, 2));
 
-                if (filled($userData?->time_in)) {
-                    $scheduledIn = Carbon::parse($key.' '.$userData->time_in);
+                if ($scheduledIn !== null) {
                     $late = $in->greaterThan($scheduledIn) ? (int) round(abs($scheduledIn->diffInMinutes($in))) : 0;
                 }
 
-                if (filled($userData?->time_out)) {
-                    $scheduledOut = Carbon::parse($key.' '.$userData->time_out);
+                if ($scheduledOut !== null) {
                     $undertime = $out->lessThan($scheduledOut) ? (int) round(abs($out->diffInMinutes($scheduledOut))) : 0;
                 }
             }
@@ -162,6 +192,7 @@ class DtrService
                 'day' => $cursor->format('D'),
                 'time_in' => $in?->format('h:i A'),
                 'time_out' => $out?->format('h:i A'),
+                'overnight' => $in !== null && $out !== null && $in->toDateString() !== $out->toDateString(),
                 'hours' => $hours,
                 'late' => $late,
                 'undertime' => $undertime,
@@ -176,6 +207,48 @@ class DtrService
         $totals['overtime_pending'] = round($totals['overtime_pending'], 2);
 
         return ['rows' => $rows, 'totals' => $totals];
+    }
+
+    /**
+     * Pair an ordered punch stream into shifts, each anchored to its clock-in's
+     * date. A clock-in is paired with the next clock-out even when that lands on
+     * the following day; a clock-out with no open clock-in is returned
+     * separately so it can still surface on its own date.
+     *
+     * @param  Collection<int, AttendanceLog>  $logs
+     * @return array{0: Collection<string, Collection<int, array{in: CarbonInterface, out: ?CarbonInterface}>>, 1: Collection<string, Collection<int, CarbonInterface>>}
+     */
+    protected function pairShifts(Collection $logs): array
+    {
+        $shifts = [];
+        $orphanOuts = [];
+        $openIn = null;
+
+        foreach ($logs as $log) {
+            if ($log->type === 'clockin') {
+                if ($openIn !== null) {
+                    $shifts[] = ['in' => $openIn, 'out' => null]; // clocked in again without clocking out
+                }
+
+                $openIn = $log->created_at;
+            } elseif ($log->type === 'clockout') {
+                if ($openIn !== null) {
+                    $shifts[] = ['in' => $openIn, 'out' => $log->created_at];
+                    $openIn = null;
+                } else {
+                    $orphanOuts[] = $log->created_at;
+                }
+            }
+        }
+
+        if ($openIn !== null) {
+            $shifts[] = ['in' => $openIn, 'out' => null]; // still on the clock
+        }
+
+        return [
+            collect($shifts)->groupBy(fn (array $shift): string => $shift['in']->toDateString()),
+            collect($orphanOuts)->groupBy(fn (CarbonInterface $out): string => $out->toDateString()),
+        ];
     }
 
     /**

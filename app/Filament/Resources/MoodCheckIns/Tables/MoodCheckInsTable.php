@@ -35,9 +35,9 @@ class MoodCheckInsTable
                     ->placeholder('—')
                     ->wrap()
                     ->toggleable(),
-                TextColumn::make('logged_on')
+                TextColumn::make('created_at')
                     ->label('Date')
-                    ->date('M j, Y')
+                    ->date('M j, Y h:i A')
                     ->sortable(),
             ])
             ->filters([

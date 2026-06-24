@@ -57,6 +57,10 @@ class ManageGeneralSettings extends SettingsPage
                             ->label('Standard working hours / day')
                             ->helperText('A full working day, used when computing leave credits.')
                             ->numeric()->minValue(1)->maxValue(24)->step(0.25)->suffix('hours')->required(),
+                        TextInput::make('maxOvertimeHours')
+                            ->label('Maximum overtime / request')
+                            ->helperText('The most overtime an employee may file on a single request.')
+                            ->numeric()->minValue(0.5)->maxValue(24)->step(0.5)->suffix('hours')->required(),
                         CheckboxList::make('workingDays')
                             ->label('Working days')
                             ->helperText('Days that count for DTR and leave. Others are treated as rest days.')

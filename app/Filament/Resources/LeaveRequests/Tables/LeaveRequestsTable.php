@@ -12,6 +12,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -24,6 +25,9 @@ class LeaveRequestsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            // Clicking a row opens a read-only view modal instead of jumping to edit.
+            ->recordAction('view')
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('user.name')
                     ->label('Employee')
@@ -86,6 +90,7 @@ class LeaveRequestsTable
                     )->all()),
             ])
             ->recordActions([
+                ViewAction::make(),
                 Action::make('approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')

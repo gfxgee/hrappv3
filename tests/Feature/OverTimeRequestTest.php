@@ -90,6 +90,41 @@ it('filters overtime by a selected employee', function () {
         ->assertCanNotSeeTableRecords([$bobOt]);
 });
 
+it('filters overtime requests by a date range', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $employee = User::factory()->create();
+    $inRange = OverTimeRequest::factory()->for($employee)->create(['request_date' => '2026-06-15']);
+    $outRange = OverTimeRequest::factory()->for($employee)->create(['request_date' => '2026-06-25']);
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->filterTable('requested_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->assertCanSeeTableRecords([$inRange])
+        ->assertCanNotSeeTableRecords([$outRange]);
+});
+
+it('exports only the filtered overtime requests to CSV', function () {
+    $this->actingAs(overtimeManager('hr'));
+
+    $alice = User::factory()->create(['name' => 'Alice', 'email' => 'alice@example.com']);
+    $bob = User::factory()->create(['name' => 'Bob', 'email' => 'bob@example.com']);
+    OverTimeRequest::factory()->for($alice)->create(['request_date' => '2026-06-15', 'hours' => 2]);
+    OverTimeRequest::factory()->for($bob)->create(['request_date' => '2026-06-25', 'hours' => 3]);
+
+    $response = Livewire::test(ListOverTimeRequests::class)
+        ->filterTable('requested_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->instance()
+        ->exportCsv();
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($csv)->toContain('Name', 'Email', 'Date') // header row
+        ->and($csv)->toContain('Alice')
+        ->and($csv)->not->toContain('Bob'); // outside the date range
+});
+
 it('summarizes hours separately for pending and approved overtime', function () {
     $this->actingAs(overtimeManager('hr'));
 
@@ -185,10 +220,32 @@ it('rejects an overtime request', function () {
     expect($ot->refresh()->status)->toBe(AttendanceStatus::REJECTED);
 });
 
+it('opens a read-only view modal from the overtime list', function () {
+    $this->actingAs(overtimeManager('hr'));
+    $ot = OverTimeRequest::factory()->create();
+
+    Livewire::test(ListOverTimeRequests::class)
+        ->assertTableActionVisible('view', $ot)
+        ->callTableAction('view', $ot)
+        ->assertHasNoTableActionErrors();
+});
+
 it('renders the file overtime page', function () {
     $this->actingAs(User::factory()->create());
 
     Livewire::test(FileOverTimeRequest::class)->assertSuccessful();
+});
+
+it('caps a filed overtime request at the configured maximum', function () {
+    $this->actingAs(User::factory()->create());
+
+    // Default max is 5 hours.
+    Livewire::test(FileOverTimeRequest::class)
+        ->fillForm(['request_date' => today()->toDateString(), 'hours' => 6, 'reason' => 'Long night'])
+        ->call('create')
+        ->assertHasFormErrors(['hours']);
+
+    expect(OverTimeRequest::query()->count())->toBe(0);
 });
 
 it('files an overtime request for the current user as for-approval', function () {

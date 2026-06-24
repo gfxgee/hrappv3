@@ -206,7 +206,7 @@ class DailyTimeRecord extends Page
                     $row['date']->toDateString(),
                     $row['day'],
                     $row['time_in'],
-                    $row['time_out'],
+                    $row['time_out'].($row['overnight'] ? ' (+1)' : ''),
                     $row['hours'],
                     $row['late'],
                     $row['undertime'],

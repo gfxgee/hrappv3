@@ -379,7 +379,7 @@ it('hides edit and cancel actions once a leave is rejected', function () {
         ->assertTableActionHidden('cancel', $leave);
 });
 
-it('hides edit but keeps cancel available once a leave is approved', function () {
+it('hides edit and cancel actions once a leave is approved', function () {
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -389,7 +389,17 @@ it('hides edit but keeps cancel available once a leave is approved', function ()
 
     Livewire::test(FileLeaveRequest::class)
         ->assertTableActionHidden('edit', $leave)
-        ->assertTableActionVisible('cancel', $leave);
+        ->assertTableActionHidden('cancel', $leave);
+});
+
+it('opens a read-only view modal from the leave list', function () {
+    $this->actingAs(userWithRole('hr'));
+    $leave = LeaveRequest::factory()->create();
+
+    Livewire::test(ListLeaveRequests::class)
+        ->assertTableActionVisible('view', $leave)
+        ->callTableAction('view', $leave)
+        ->assertHasNoTableActionErrors();
 });
 
 it('cancels a leave and restores the credit', function () {

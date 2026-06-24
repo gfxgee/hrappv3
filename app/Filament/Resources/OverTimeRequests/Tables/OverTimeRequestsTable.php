@@ -11,13 +11,17 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class OverTimeRequestsTable
@@ -26,6 +30,9 @@ class OverTimeRequestsTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
+            // Clicking a row opens a read-only view modal instead of jumping to edit.
+            ->recordAction('view')
+            ->recordUrl(null)
             // Only list overtime filed by active employees.
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereHas(
                 'user',
@@ -90,8 +97,30 @@ class OverTimeRequestsTable
                     ->preload(),
                 SelectFilter::make('status')
                     ->options(AttendanceStatus::toArray()),
+                Filter::make('requested_between')
+                    ->schema([
+                        DatePicker::make('from')->label('From'),
+                        DatePicker::make('until')->label('Until'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when($data['from'] ?? null, fn (Builder $q, $date): Builder => $q->whereDate('request_date', '>=', $date))
+                        ->when($data['until'] ?? null, fn (Builder $q, $date): Builder => $q->whereDate('request_date', '<=', $date)))
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if (! empty($data['from'])) {
+                            $indicators[] = 'From '.Carbon::parse($data['from'])->toFormattedDateString();
+                        }
+
+                        if (! empty($data['until'])) {
+                            $indicators[] = 'Until '.Carbon::parse($data['until'])->toFormattedDateString();
+                        }
+
+                        return $indicators;
+                    }),
             ])
             ->recordActions([
+                ViewAction::make(),
                 Action::make('approve')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')

@@ -68,6 +68,7 @@ it('persists changed settings from the form', function () {
             'lunchHours' => 0.5,
             'lunchThresholdHours' => 6.0,
             'standardWorkingHours' => 8.0,
+            'maxOvertimeHours' => 4.0,
             'workingDays' => [1, 2, 3, 4, 5, 6],
             'comingUpWindowDays' => 30,
             'biometricDedupeMinutes' => 5,
@@ -79,6 +80,7 @@ it('persists changed settings from the form', function () {
     $settings = app(GeneralSettings::class);
 
     expect($settings->lunchHours)->toBe(0.5)
+        ->and($settings->maxOvertimeHours)->toBe(4.0)
         ->and($settings->lunchThresholdHours)->toBe(6.0)
         ->and($settings->workingDays)->toBe([1, 2, 3, 4, 5, 6])
         ->and($settings->comingUpWindowDays)->toBe(30)

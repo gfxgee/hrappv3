@@ -34,9 +34,9 @@ class ClockInOutWidget extends Widget
 
     public function clockIn(): void
     {
-        // Block only when there's an OPEN shift (clocked in, not yet out).
-        // After a completed shift, the user can clock in again for the next one.
-        if ($this->getClockInLog() !== null && $this->getClockOutLog() === null) {
+        // One shift per day: blocked while a shift is open, and once a shift has
+        // already started today (no manual "start new shift").
+        if (! $this->canClockIn()) {
             return;
         }
 
@@ -73,42 +73,63 @@ class ClockInOutWidget extends Widget
     }
 
     /**
-     * The clock-in for the current shift — the most recent clock-in within the
-     * lookback window. Returns null when there's no recent clock-in.
+     * The clock-in for the *current* shift to display:
+     *  - an open shift (no clock-out after it) always shows, so a night shift
+     *    spanning midnight stays visible; otherwise
+     *  - today's clock-in, if any.
+     *
+     * A shift that was completed on a previous day is intentionally not shown,
+     * so the widget resets to blank on a new day until the next clock-in.
      */
     public function getClockInLog(): ?AttendanceLog
     {
-        return AttendanceLog::query()
+        $recent = AttendanceLog::query()
             ->where('user_id', auth()->id())
             ->where('type', 'clockin')
             ->where('created_at', '>=', now()->subHours(self::ACTIVE_SHIFT_LOOKBACK_HOURS))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->first();
+
+        if ($recent === null) {
+            return null;
+        }
+
+        // Open shift always shows; a completed shift only while it's still today.
+        return ($this->clockOutAfter($recent) === null || $recent->created_at->isToday()) ? $recent : null;
     }
 
     /**
-     * The clock-out for the current shift — a clock-out inserted AFTER the
-     * active clock-in. Returns null while the shift is still open.
-     *
-     * Uses `id > $in->id` rather than a created_at comparison because the
-     * default timestamp casts to seconds, so back-to-back writes (especially
-     * in tests) can produce identical created_at values. Auto-increment IDs
-     * are strictly monotonic, so "inserted after" is unambiguous.
+     * The clock-out that closes the current shift. Returns null while the shift
+     * is still open.
      */
     public function getClockOutLog(): ?AttendanceLog
     {
         $in = $this->getClockInLog();
 
-        if ($in === null) {
-            return null;
-        }
+        return $in === null ? null : $this->clockOutAfter($in);
+    }
 
+    /**
+     * The first clock-out that occurs at or after the given clock-in — i.e. the
+     * one that closes it. Matched by time so an earlier orphan clock-out can't
+     * pair with a later clock-in (e.g. an out-of-order biometric sync that has
+     * a higher id but an earlier timestamp). The id only breaks ties between
+     * punches written within the same second.
+     */
+    protected function clockOutAfter(AttendanceLog $in): ?AttendanceLog
+    {
         return AttendanceLog::query()
-            ->where('user_id', auth()->id())
+            ->where('user_id', $in->user_id)
             ->where('type', 'clockout')
-            ->where('id', '>', $in->id)
-            ->orderByDesc('id')
+            ->where(function ($query) use ($in): void {
+                $query->where('created_at', '>', $in->created_at)
+                    ->orWhere(function ($tie) use ($in): void {
+                        $tie->where('created_at', $in->created_at)->where('id', '>', $in->id);
+                    });
+            })
+            ->orderBy('created_at')
+            ->orderBy('id')
             ->first();
     }
 
@@ -140,6 +161,32 @@ class ClockInOutWidget extends Widget
         $minutes = intdiv($seconds % 3600, 60);
 
         return sprintf('%dh %02dm', $hours, $minutes);
+    }
+
+    /**
+     * Whether the employee may start a shift now: not already in an open shift,
+     * and hasn't already clocked in today (one scheduled shift per day).
+     */
+    public function canClockIn(): bool
+    {
+        // In an open shift the only valid action is clocking out.
+        if ($this->getClockInLog() !== null && $this->getClockOutLog() === null) {
+            return false;
+        }
+
+        return ! $this->hasClockedInToday();
+    }
+
+    /**
+     * Whether a clock-in already exists for the current calendar day.
+     */
+    public function hasClockedInToday(): bool
+    {
+        return AttendanceLog::query()
+            ->where('user_id', auth()->id())
+            ->where('type', 'clockin')
+            ->whereDate('created_at', today())
+            ->exists();
     }
 
     /**
