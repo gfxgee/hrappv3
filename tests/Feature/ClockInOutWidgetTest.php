@@ -121,13 +121,25 @@ it('ignores a stale clock-in older than 24 hours', function () {
     expect((new ClockInOutWidget)->getStatus())->toBe('not_started');
 });
 
-it('lets a user clock in again after a completed shift', function () {
+it('does not allow a second shift on the same day', function () {
     Livewire::test(ClockInOutWidget::class)
         ->call('clockIn')
         ->call('clockOut')
-        ->call('clockIn'); // start of next shift
+        ->call('clockIn'); // attempt to start another shift today — blocked
 
-    expect(AttendanceLog::where('type', 'clockin')->count())->toBe(2);
+    expect(AttendanceLog::where('type', 'clockin')->count())->toBe(1);
+});
+
+it('allows clocking in again on a new day', function () {
+    $user = auth()->user();
+
+    // Yesterday's completed shift.
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockin', 'device' => 'web', 'created_at' => now()->subDay(), 'updated_at' => now()->subDay()]);
+    AttendanceLog::create(['user_id' => $user->id, 'type' => 'clockout', 'device' => 'web', 'created_at' => now()->subDay()->addHours(8), 'updated_at' => now()->subDay()->addHours(8)]);
+
+    Livewire::test(ClockInOutWidget::class)->call('clockIn');
+
+    expect(AttendanceLog::where('user_id', $user->id)->where('type', 'clockin')->whereDate('created_at', today())->count())->toBe(1);
 });
 
 it('computes an elapsed time once clocked in', function () {

@@ -110,21 +110,34 @@ class DtrService
                 $out = $orphanOutsByDate->get($key)?->last();
             }
 
+            // The employee's scheduled shift window for this day, if set. An
+            // "out" at or before "in" means the schedule runs past midnight.
+            $scheduledIn = filled($userData?->time_in) ? Carbon::parse($key.' '.$userData->time_in) : null;
+            $scheduledOut = filled($userData?->time_out) ? Carbon::parse($key.' '.$userData->time_out) : null;
+
+            if ($scheduledIn !== null && $scheduledOut !== null && $scheduledOut->lessThanOrEqualTo($scheduledIn)) {
+                $scheduledOut = $scheduledOut->addDay();
+            }
+
             $hours = 0.0;
             $late = 0;
             $undertime = 0;
 
             if ($in && $out) {
-                $gross = abs($in->diffInMinutes($out)) / 60;
+                // Clamp the worked span to the scheduled window so early
+                // clock-ins and late clock-outs (overtime) don't change paid
+                // regular hours. With no schedule set, the raw span is used.
+                $start = $scheduledIn !== null ? $in->copy()->max($scheduledIn) : $in;
+                $end = $scheduledOut !== null ? $out->copy()->min($scheduledOut) : $out;
+
+                $gross = $end->greaterThan($start) ? abs($start->diffInMinutes($end)) / 60 : 0.0;
                 $hours = max(0.0, round($gross >= $this->settings->lunchThresholdHours ? $gross - $this->settings->lunchHours : $gross, 2));
 
-                if (filled($userData?->time_in)) {
-                    $scheduledIn = Carbon::parse($key.' '.$userData->time_in);
+                if ($scheduledIn !== null) {
                     $late = $in->greaterThan($scheduledIn) ? (int) round(abs($scheduledIn->diffInMinutes($in))) : 0;
                 }
 
-                if (filled($userData?->time_out)) {
-                    $scheduledOut = Carbon::parse($key.' '.$userData->time_out);
+                if ($scheduledOut !== null) {
                     $undertime = $out->lessThan($scheduledOut) ? (int) round(abs($out->diffInMinutes($scheduledOut))) : 0;
                 }
             }

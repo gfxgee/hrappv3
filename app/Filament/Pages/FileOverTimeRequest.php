@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enum\AttendanceStatus;
 use App\Filament\Support\EnhanceReason;
 use App\Models\OverTimeRequest;
+use App\Settings\GeneralSettings;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -75,10 +76,11 @@ class FileOverTimeRequest extends Page implements HasTable
                 ->required()
                 ->numeric()
                 ->minValue(0.5)
-                ->maxValue(24)
+                ->maxValue(fn (): float => app(GeneralSettings::class)->maxOvertimeHours)
                 ->step(0.5)
                 ->default(0.5)
-                ->suffix('hrs'),
+                ->suffix('hrs')
+                ->helperText(fn (): string => 'Maximum '.rtrim(rtrim(number_format(app(GeneralSettings::class)->maxOvertimeHours, 1), '0'), '.').' hours per request.'),
             Textarea::make('reason')
                 ->required()
                 ->hintActions(EnhanceReason::for('overtime'))

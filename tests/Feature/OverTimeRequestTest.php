@@ -201,6 +201,18 @@ it('renders the file overtime page', function () {
     Livewire::test(FileOverTimeRequest::class)->assertSuccessful();
 });
 
+it('caps a filed overtime request at the configured maximum', function () {
+    $this->actingAs(User::factory()->create());
+
+    // Default max is 5 hours.
+    Livewire::test(FileOverTimeRequest::class)
+        ->fillForm(['request_date' => today()->toDateString(), 'hours' => 6, 'reason' => 'Long night'])
+        ->call('create')
+        ->assertHasFormErrors(['hours']);
+
+    expect(OverTimeRequest::query()->count())->toBe(0);
+});
+
 it('files an overtime request for the current user as for-approval', function () {
     $user = User::factory()->create();
     $this->actingAs($user);

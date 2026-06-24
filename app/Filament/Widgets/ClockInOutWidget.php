@@ -34,9 +34,9 @@ class ClockInOutWidget extends Widget
 
     public function clockIn(): void
     {
-        // Block only when there's an OPEN shift (clocked in, not yet out).
-        // After a completed shift, the user can clock in again for the next one.
-        if ($this->getClockInLog() !== null && $this->getClockOutLog() === null) {
+        // One shift per day: blocked while a shift is open, and once a shift has
+        // already started today (no manual "start new shift").
+        if (! $this->canClockIn()) {
             return;
         }
 
@@ -140,6 +140,32 @@ class ClockInOutWidget extends Widget
         $minutes = intdiv($seconds % 3600, 60);
 
         return sprintf('%dh %02dm', $hours, $minutes);
+    }
+
+    /**
+     * Whether the employee may start a shift now: not already in an open shift,
+     * and hasn't already clocked in today (one scheduled shift per day).
+     */
+    public function canClockIn(): bool
+    {
+        // In an open shift the only valid action is clocking out.
+        if ($this->getClockInLog() !== null && $this->getClockOutLog() === null) {
+            return false;
+        }
+
+        return ! $this->hasClockedInToday();
+    }
+
+    /**
+     * Whether a clock-in already exists for the current calendar day.
+     */
+    public function hasClockedInToday(): bool
+    {
+        return AttendanceLog::query()
+            ->where('user_id', auth()->id())
+            ->where('type', 'clockin')
+            ->whereDate('created_at', today())
+            ->exists();
     }
 
     /**

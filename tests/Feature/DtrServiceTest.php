@@ -191,6 +191,57 @@ it('still surfaces an orphan clock-out on its own day', function () {
         ->and($row['status'])->toBe('Present');
 });
 
+it('clamps an early clock-in to the scheduled start', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-06-01 08:00:00'); // 2h early
+    logAt($user, 'clockout', '2026-06-01 18:00:00');
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['hours'])->toBe(7.0) // 10:00–18:00 = 8h − 1h lunch; the early 2h is not paid
+        ->and($row['late'])->toBe(0);
+});
+
+it('clamps a late clock-out to the scheduled end (overtime is not auto-counted)', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-06-01 10:00:00');
+    logAt($user, 'clockout', '2026-06-01 20:00:00'); // 2h past schedule
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['hours'])->toBe(7.0) // capped at 18:00; the extra 2h is overtime via request
+        ->and($row['undertime'])->toBe(0);
+});
+
+it('falls back to the raw worked span when no schedule is set', function () {
+    $user = User::factory()->create(); // no schedule
+
+    logAt($user, 'clockin', '2026-06-01 08:00:00');
+    logAt($user, 'clockout', '2026-06-01 18:00:00');
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'))['rows'][0];
+
+    expect($row['hours'])->toBe(9.0); // full 10h span − 1h lunch, unclamped
+});
+
+it('clamps against a schedule that runs past midnight', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '22:00', 'time_out' => '06:00']);
+
+    logAt($user, 'clockin', '2026-06-01 22:00:00');
+    logAt($user, 'clockout', '2026-06-02 06:00:00');
+
+    $row = collect(app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-02'))['rows'])
+        ->first(fn (array $r): bool => $r['date']->toDateString() === '2026-06-01');
+
+    expect($row['hours'])->toBe(7.0) // 22:00–06:00 = 8h − 1h lunch
+        ->and($row['overnight'])->toBeTrue();
+});
+
 it('sums approved overtime hours onto the day', function () {
     $user = User::factory()->create();
     OverTimeRequest::factory()->for($user)->create([

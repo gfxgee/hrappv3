@@ -23,6 +23,9 @@ class GeneralSettings extends Settings
     /** Gross worked hours above which the lunch break is deducted. */
     public float $lunchThresholdHours;
 
+    /** Maximum overtime hours an employee may file per overtime request. */
+    public float $maxOvertimeHours;
+
     /** Standard paid hours in a full working day (used for leave credits). */
     public float $standardWorkingHours;
 
