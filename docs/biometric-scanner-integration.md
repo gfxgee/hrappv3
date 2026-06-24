@@ -109,9 +109,26 @@ Handled by
 - Replicates DF Portal behaviour: **every** scan from the official scanner is
   recorded (no dedupe, no toggle), labelled from the device status byte:
   `0 → TIME-IN`, `1 → TIME-OUT`, `4 → OT-IN`, `5 → OT-OUT`, else `SCAN`.
-- The employee email is resolved **locally** (`users.bio_metric_id → email`), so
-  unlike DF Portal this integration **never reads** SharePoint — it only writes
-  one list item per punch. That is the tightest the code path can be.
+- **Gated by the "Active Employees" workbook.** As in DF Portal, the SharePoint
+  workbook is the authority for *who* is a legitimate employee allowed into
+  Timekeeping and *which email* to log them under. The service searches the site
+  drive for the file, downloads it, parses it (pure-PHP `ZipArchive` reader),
+  and builds a cached `biometric_id → {email, name}` map. A scan whose biometric
+  id is **not** in the workbook is skipped. This is separate from the local
+  `attendance_logs` path, which still matches on `users.bio_metric_id`.
+
+### Keeping the workbook map fresh
+
+The map is cached (`SHAREPOINT_EMPLOYEES_CACHE_HOURS`, default 24h) and rebuilt
+lazily on the next punch after expiry, so it is self-healing even with no cron.
+For predictable propagation of new hires/departures, a scheduled command warms
+it daily:
+
+- `php artisan zkteco:refresh-employees` — clears and rebuilds the map; reports
+  the employee count. Run manually any time, e.g. right after editing the sheet.
+- Scheduled in [`routes/console.php`](../routes/console.php) at **05:00 daily**.
+  This runs under the existing Laravel scheduler (see §7) — no extra cron needed
+  if the scheduler is already wired up.
 
 ### Important: the "limit to mirror punching" is enforced in code, not by the key
 
@@ -159,12 +176,21 @@ The local attendance records live in the existing `attendance_logs` table.
 | `SHAREPOINT_SITE_ID`                | *(empty)*      | Target SharePoint site.                                  |
 | `SHAREPOINT_TIMEKEEPING_LIST`       | `Timekeeping`  | List display name to write to.                           |
 | `SHAREPOINT_TIMEKEEPING_EMAIL_FIELD`| `Class`        | Internal column name of the list's email field.          |
+| `SHAREPOINT_EMPLOYEES_SEARCH`       | `Active Employees` | Drive search term to locate the workbook.            |
+| `SHAREPOINT_EMPLOYEES_CACHE_HOURS`  | `24`           | How long the employee map is cached.                     |
 
 ## 7. Operational notes
 
 - **Queue worker must be running.** Both the local sync and the mirror are
   queued (`QUEUE_CONNECTION=database`). Without a worker, scans are stored raw
-  but never become attendance logs. Run `php artisan queue:work`.
+  but never become attendance logs. Run `php artisan queue:work` (Supervisor on
+  the VPS).
+- **Scheduler cron (only if the SharePoint mirror is used).** The daily
+  `zkteco:refresh-employees` runs under Laravel's scheduler, which needs the one
+  standard cron entry: `* * * * * php /path/to/hrappv3/artisan schedule:run`.
+  hrappv3 already schedules `activitylog:clean` and celebrations, so if those
+  run, this cron is already in place and nothing extra is needed. Not required
+  when the mirror is disabled.
 - **Employee setup:** an employee only syncs once their `bio_metric_id` is set
   (Users resource in the admin panel) to match their enrolled ID on the device.
 - **Pointing the device:** configure the scanner's server/cloud (ADMS) address
@@ -181,6 +207,7 @@ The local attendance records live in the existing `attendance_logs` table.
 - `app/Jobs/SyncAttendanceLogFromScan.php`
 - `app/Jobs/MirrorPunchToTimekeeping.php`
 - `app/Services/ZktecoTimekeepingService.php`
+- `app/Console/Commands/RefreshActiveEmployees.php`
 - `app/Models/ZktecoDevice.php`, `app/Models/ZktecoAttendance.php`
 - `config/zkteco.php`
 - `database/migrations/2026_06_23_000001_create_zkteco_tables.php`
@@ -192,6 +219,7 @@ The local attendance records live in the existing `attendance_logs` table.
 **Changed**
 
 - `routes/web.php` — registered the five `iclock` routes.
+- `routes/console.php` — scheduled `zkteco:refresh-employees` daily.
 - `bootstrap/app.php` — CSRF exemption for `iclock/*`.
 - `config/services.php` — added the `sharepoint` block.
 - `.env.example` — added `ZKTECO_*` and `SHAREPOINT_*` keys.

@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\User;
 use App\Models\ZktecoAttendance;
 use App\Services\ZktecoTimekeepingService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,8 +14,10 @@ use Illuminate\Support\Facades\Log;
  *
  * This replicates the DF Portal's behaviour: every scan from the official
  * scanner is recorded, labelled by the device's status byte, regardless of
- * whether the employee toggled in/out. The employee's email is resolved locally
- * from users.bio_metric_id.
+ * whether the employee toggled in/out. The authority for who may appear in
+ * Timekeeping (and which email to use) is the "Active Employees" workbook — a
+ * biometric id not listed there is not a legitimate active employee and is
+ * skipped.
  */
 class MirrorPunchToTimekeeping implements ShouldQueue
 {
@@ -40,18 +41,16 @@ class MirrorPunchToTimekeeping implements ShouldQueue
             return;
         }
 
-        $email = User::query()
-            ->where('bio_metric_id', $this->attendance->bio_metric_id)
-            ->value('email');
+        $employee = $service->findEmployeeByBiometricId($this->attendance->bio_metric_id);
 
-        if (blank($email)) {
-            Log::warning('ZKTeco: no employee email for SharePoint mirror, skipping', [
+        if ($employee === null) {
+            Log::warning('ZKTeco: biometric id not in Active Employees, skipping Timekeeping mirror', [
                 'bio_metric_id' => $this->attendance->bio_metric_id,
             ]);
 
             return;
         }
 
-        $service->recordPunch($email, $this->attendance);
+        $service->recordPunch($employee['email'], $this->attendance);
     }
 }
