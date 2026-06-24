@@ -76,6 +76,13 @@ return [
         // column (DF Portal's "Email" column is internally named "Class").
         'list_name' => env('SHAREPOINT_TIMEKEEPING_LIST', 'Timekeeping'),
         'email_field' => env('SHAREPOINT_TIMEKEEPING_EMAIL_FIELD', 'Class'),
+
+        // The "Active Employees" workbook is the authority for which biometric
+        // ids may be mirrored to Timekeeping and which email to use. Search term
+        // locates the file in the site drive; the map is cached for this many
+        // hours (refreshed daily by zkteco:refresh-employees).
+        'employees_search' => env('SHAREPOINT_EMPLOYEES_SEARCH', 'Active Employees'),
+        'employees_cache_hours' => (int) env('SHAREPOINT_EMPLOYEES_CACHE_HOURS', 24),
     ],
 
     'gif' => [
