@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Enum\AssignmentType;
 use App\Filament\Resources\AttendanceCorrectionRequests\AttendanceCorrectionRequestResource;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Filament\Resources\OverTimeRequests\OverTimeRequestResource;
+use App\Models\AssetAssignment;
 use App\Models\AttendanceCorrectionRequest;
 use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
@@ -127,6 +129,36 @@ class RequestNotifier
                     ->markAsRead(),
             ])
             ->sendToDatabase($recipients);
+    }
+
+    /**
+     * Notify an employee that an asset has been assigned (or lent) to them.
+     */
+    public function assetAssigned(AssetAssignment $assignment): void
+    {
+        $holder = $assignment->user;
+        $asset = $assignment->asset;
+
+        if ($holder === null || $asset === null) {
+            return;
+        }
+
+        $isBorrow = $assignment->type === AssignmentType::BORROW;
+
+        Notification::make()
+            ->title($isBorrow ? 'Equipment lent to you' : 'Equipment assigned to you')
+            ->icon(Heroicon::OutlinedRectangleStack)
+            ->iconColor('info')
+            ->body(sprintf(
+                '%s (%s) was %s to you%s.',
+                $asset->name,
+                $asset->asset_tag ?? $asset->category?->label() ?? 'asset',
+                $isBorrow ? 'lent' : 'assigned',
+                $isBorrow && $assignment->due_at
+                    ? ', due back '.$assignment->due_at->format('M j, Y')
+                    : '',
+            ))
+            ->sendToDatabase(collect([$holder]));
     }
 
     /**

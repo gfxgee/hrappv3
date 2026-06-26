@@ -44,3 +44,75 @@ it('lets an employee change only their password', function () {
         ->and($user->email)->toBe('original@example.com')
         ->and(Hash::check('new-password-123', $user->password))->toBeTrue();
 });
+
+it('lets an employee link any number of government ID documents', function () {
+    $user = User::factory()->create(['status' => 'active']);
+    $this->actingAs($user);
+
+    Livewire::test(EditProfile::class)
+        ->fillForm([
+            'government_documents' => [
+                ['label' => 'SSS', 'url' => 'https://drive.google.com/sss'],
+                ['label' => 'NBI Clearance', 'url' => 'https://drive.google.com/nbi'],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $documents = $user->refresh()->government_documents;
+
+    expect($documents)->toHaveCount(2)
+        ->and($documents[0]['label'])->toBe('SSS')
+        ->and($documents[0]['url'])->toBe('https://drive.google.com/sss')
+        ->and($documents[1]['label'])->toBe('NBI Clearance');
+});
+
+it('rejects an invalid government ID document link', function () {
+    $user = User::factory()->create(['status' => 'active']);
+    $this->actingAs($user);
+
+    Livewire::test(EditProfile::class)
+        ->fillForm([
+            'government_documents' => [
+                ['label' => 'SSS', 'url' => 'not-a-url'],
+            ],
+        ])
+        ->call('save')
+        ->assertHasFormErrors();
+});
+
+it('lets an employee maintain their PC specifications', function () {
+    $user = User::factory()->create(['status' => 'active']);
+    $this->actingAs($user);
+
+    Livewire::test(EditProfile::class)
+        ->fillForm([
+            'pc_specifications' => [
+                ['component' => 'RAM', 'details' => 'Corsair Vengeance 8GB'],
+                ['component' => 'Mouse', 'details' => 'Logitech MX Master 3'],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $specs = $user->refresh()->pc_specifications;
+
+    expect($specs)->toHaveCount(2)
+        ->and($specs[0]['component'])->toBe('RAM')
+        ->and($specs[0]['details'])->toBe('Corsair Vengeance 8GB')
+        ->and($specs[1]['component'])->toBe('Mouse');
+});
+
+it('requires both the component and its details for a PC specification', function () {
+    $user = User::factory()->create(['status' => 'active']);
+    $this->actingAs($user);
+
+    Livewire::test(EditProfile::class)
+        ->fillForm([
+            'pc_specifications' => [
+                ['component' => 'RAM', 'details' => ''],
+            ],
+        ])
+        ->call('save')
+        ->assertHasFormErrors();
+});

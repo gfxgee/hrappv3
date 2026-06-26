@@ -5,18 +5,22 @@ use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Pages\ViewUser;
+use App\Filament\Resources\Users\RelationManagers\AssetAssignmentsRelationManager;
 use App\Filament\Resources\Users\RelationManagers\AttendanceLogsRelationManager;
 use App\Filament\Resources\Users\RelationManagers\OverTimeRequestsRelationManager;
 use App\Filament\Resources\Users\UserResource;
+use App\Models\Asset;
 use App\Models\AttendanceLog;
 use App\Models\Department;
 use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
+use App\Services\AssetAssignmentService;
 use Filament\Facades\Filament;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
@@ -204,6 +208,80 @@ it('hides the roles section from non-super-admins', function () {
 
     Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
         ->assertFormFieldDoesNotExist('roles');
+});
+
+it('lets HR link an employee\'s government ID documents and logs the change', function () {
+    $employee = User::factory()->create();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm([
+            'government_documents' => [
+                ['label' => 'SSS', 'url' => 'https://drive.google.com/sss'],
+                ['label' => 'PhilHealth', 'url' => 'https://drive.google.com/phic'],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $employee->refresh();
+
+    $activity = Activity::query()
+        ->where('subject_type', User::class)
+        ->where('subject_id', $employee->id)
+        ->where('event', 'updated')
+        ->latest('id')
+        ->first();
+
+    expect($employee->government_documents)->toHaveCount(2)
+        ->and($employee->government_documents[0]['label'])->toBe('SSS')
+        ->and($activity)->not->toBeNull()
+        ->and(data_get($activity->properties->toArray(), 'attributes.government_documents.0.url'))
+        ->toBe('https://drive.google.com/sss');
+});
+
+it('lets HR record an employee\'s PC specifications and logs the change', function () {
+    $employee = User::factory()->create();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm([
+            'pc_specifications' => [
+                ['component' => 'Monitor', 'details' => 'Dell P2422H 24"'],
+                ['component' => 'RAM', 'details' => 'Corsair Vengeance 8GB'],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $employee->refresh();
+
+    $activity = Activity::query()
+        ->where('subject_type', User::class)
+        ->where('subject_id', $employee->id)
+        ->where('event', 'updated')
+        ->latest('id')
+        ->first();
+
+    expect($employee->pc_specifications)->toHaveCount(2)
+        ->and($employee->pc_specifications[0]['component'])->toBe('Monitor')
+        ->and($activity)->not->toBeNull()
+        ->and(data_get($activity->properties->toArray(), 'attributes.pc_specifications.1.details'))
+        ->toBe('Corsair Vengeance 8GB');
+});
+
+it('lists a user\'s assigned equipment in the relation manager', function () {
+    $employee = User::factory()->create();
+    $asset = Asset::factory()->create(['name' => 'Logitech MX Master 3']);
+    app(AssetAssignmentService::class)->assign($asset, $employee);
+
+    $assignment = $employee->assetAssignments()->firstOrFail();
+
+    Livewire::test(AssetAssignmentsRelationManager::class, [
+        'ownerRecord' => $employee,
+        'pageClass' => EditUser::class,
+    ])
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$assignment])
+        ->assertSee('Logitech MX Master 3');
 });
 
 it('lists a user\'s attendance logs in the relation manager', function () {

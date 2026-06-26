@@ -31,7 +31,7 @@ use Spatie\Permission\Traits\HasRoles;
     'email', 'personal_email', 'password', 'photo', 'sex', 'status', 'active',
     'bio_metric_id', 'birthday', 'date_hired', 'regular_date', 'phone', 'civil_status',
     'employment_status', 'department_id', 'job_title', 'sss', 'phic', 'hdmf_tin',
-    'job_description', 'permanent_address', 'emergency_contact',
+    'government_documents', 'pc_specifications', 'job_description', 'permanent_address', 'emergency_contact',
 ])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
@@ -54,7 +54,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
      */
     protected function activitylogFields(): array
     {
-        return ['name', 'email', 'status', 'active', 'department_id', 'job_title', 'employment_status'];
+        return ['name', 'email', 'status', 'active', 'department_id', 'job_title', 'employment_status',
+            'government_documents', 'pc_specifications'];
     }
 
     /**
@@ -115,6 +116,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'emergency_contact' => 'array',
+            'government_documents' => 'array',
+            'pc_specifications' => 'array',
         ];
     }
 
@@ -244,5 +247,25 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function attendanceLogs(): HasMany
     {
         return $this->hasMany(AttendanceLog::class);
+    }
+
+    /**
+     * Every asset assignment/borrow this employee has had, newest first.
+     *
+     * @return HasMany<AssetAssignment, $this>
+     */
+    public function assetAssignments(): HasMany
+    {
+        return $this->hasMany(AssetAssignment::class)->latest('assigned_at');
+    }
+
+    /**
+     * Assets currently held by this employee (mirrors the open assignments).
+     *
+     * @return HasMany<Asset, $this>
+     */
+    public function assets(): HasMany
+    {
+        return $this->hasMany(Asset::class, 'assigned_to');
     }
 }

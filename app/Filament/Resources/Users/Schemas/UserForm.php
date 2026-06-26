@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Filament\Support\GovernmentDocumentsRepeater;
+use App\Filament\Support\PcSpecificationsRepeater;
 use App\Filament\Support\TimeSelect;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -120,6 +122,15 @@ class UserForm
                             ->label('PhilHealth'),
                         TextInput::make('hdmf_tin')
                             ->label('HDMF / TIN'),
+                        GovernmentDocumentsRepeater::make()
+                            ->helperText('Links to the digital copies (Google Drive, OneDrive, etc.). Add a row per document.'),
+                    ]),
+
+                Section::make('PC Specifications')
+                    ->description('The employee\'s workstation hardware. The employee can also edit this from their own profile.')
+                    ->columns(1)
+                    ->schema([
+                        PcSpecificationsRepeater::make(),
                     ]),
 
                 Section::make('Leave Balances & Schedule')

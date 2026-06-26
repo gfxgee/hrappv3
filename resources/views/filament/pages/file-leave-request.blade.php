@@ -60,9 +60,7 @@
         </form>
     </x-filament::section>
 
-    <x-filament::section>
-        <x-slot name="heading">My Filed Leaves</x-slot>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">My Filed Leaves</h2>
 
         {{ $this->table }}
-    </x-filament::section>
 </x-filament-panels::page>
