@@ -41,7 +41,7 @@ class RolesAndPermissionsSeeder extends Seeder
         // 🔗 Assign permissions to roles
         $superAdmin->givePermissionTo(Permission::all());
         $superAdmin2->givePermissionTo(Permission::all());
-        $hr->givePermissionTo('manage users');
+        $hr->givePermissionTo(['manage users', 'manage assets']);
         $teamLeader->givePermissionTo('manage own team');
         $officeManager->givePermissionTo('manage assets');
 

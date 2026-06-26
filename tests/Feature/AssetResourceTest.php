@@ -13,12 +13,14 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Livewire\Livewire;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 beforeEach(function () {
     Filament::setCurrentPanel('admin');
 
-    Role::findOrCreate('hr');
+    Permission::findOrCreate('manage assets');
+    Role::findOrCreate('hr')->givePermissionTo('manage assets');
     $this->manager = User::factory()->create();
     $this->manager->assignRole('hr');
     $this->actingAs($this->manager);
@@ -36,13 +38,40 @@ it('grants asset access to managers but not to plain employees', function () {
 });
 
 it('grants asset access to office managers but keeps them out of other admin areas', function () {
-    Role::findOrCreate('office_manager');
+    Permission::findOrCreate('manage assets');
+    Role::findOrCreate('office_manager')->givePermissionTo('manage assets');
     $officeManager = User::factory()->create();
     $officeManager->assignRole('office_manager');
     $this->actingAs($officeManager);
 
     expect(AssetResource::canAccess())->toBeTrue()
         ->and(LeaveRequestResource::canAccess())->toBeFalse();
+});
+
+it('grants asset access to any role granted the manage-assets permission (no code change)', function () {
+    Permission::findOrCreate('manage assets');
+    Role::findOrCreate('warehouse_staff')->givePermissionTo('manage assets');
+    $user = User::factory()->create();
+    $user->assignRole('warehouse_staff');
+    $this->actingAs($user);
+
+    expect(AssetResource::canAccess())->toBeTrue();
+});
+
+it('denies a role that does not hold the manage-assets permission', function () {
+    $user = User::factory()->create();
+    $user->assignRole(Role::findOrCreate('receptionist'));
+    $this->actingAs($user);
+
+    expect(AssetResource::canAccess())->toBeFalse();
+});
+
+it('grants asset access to super admins without an explicit permission grant', function () {
+    $admin = User::factory()->create();
+    $admin->assignRole(Role::findOrCreate('super_admin'));
+    $this->actingAs($admin);
+
+    expect(AssetResource::canAccess())->toBeTrue();
 });
 
 it('creates an asset and auto-generates a sequential asset tag', function () {
