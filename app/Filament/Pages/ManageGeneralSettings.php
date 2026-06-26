@@ -79,12 +79,12 @@ class ManageGeneralSettings extends SettingsPage
                             ->helperText('How far ahead the dashboard\'s "Coming up" list looks for birthdays, anniversaries, and holidays. The HR Overview always shows the next 7 days.')
                             ->numeric()->minValue(1)->maxValue(366)->suffix('days')->required(),
                     ]),
-                Tab::make('Import')
-                    ->icon(Heroicon::OutlinedArrowUpTray)
+                Tab::make('Biometric')
+                    ->icon(Heroicon::OutlinedFingerPrint)
                     ->schema([
                         TextInput::make('biometricDedupeMinutes')
                             ->label('Collapse double-punches within')
-                            ->helperText('Default window for the biometric import (can be overridden per upload).')
+                            ->helperText('Window for collapsing accidental repeated scans from the biometric scanner.')
                             ->numeric()->minValue(0)->maxValue(120)->suffix('minutes')->required(),
                     ]),
                 Tab::make('Recognition')

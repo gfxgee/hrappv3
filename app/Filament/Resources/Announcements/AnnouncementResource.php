@@ -28,7 +28,7 @@ class AnnouncementResource extends Resource
     protected static ?string $recordTitleAttribute = 'title';
 
     /** Roles permitted to manage announcements. */
-    protected const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+    protected const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr', 'office_manager'];
 
     public static function canAccess(): bool
     {

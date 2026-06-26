@@ -7,6 +7,8 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Permission;
 
 class RoleForm
 {
@@ -25,10 +27,11 @@ class RoleForm
                     ]),
 
                 Section::make('Permissions')
-                    ->description('Choose what this role is allowed to do.')
+                    ->description('Capabilities for this role. Most access in the app is governed by the role itself (e.g. HR, Office Manager); these flags cover the few permission-based checks.')
                     ->schema([
                         CheckboxList::make('permissions')
                             ->relationship('permissions', 'name')
+                            ->getOptionLabelFromRecordUsing(fn (Permission $record): string => Str::headline($record->name))
                             ->searchable()
                             ->bulkToggleable()
                             ->columns(2)

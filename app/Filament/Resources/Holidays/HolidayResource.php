@@ -31,7 +31,7 @@ class HolidayResource extends Resource
      *
      * @var list<string>
      */
-    protected const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr'];
+    protected const MANAGER_ROLES = ['superadmin', 'super_admin', 'hr', 'office_manager'];
 
     public static function canAccess(): bool
     {

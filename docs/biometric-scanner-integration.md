@@ -26,7 +26,7 @@ database* it pushes every punch into a SharePoint "Timekeeping" list and maps
 employees by reading an "Active Employees" Excel file from SharePoint via Graph.
 
 hrappv3 **is** the HR database. It already has `users.bio_metric_id`,
-`attendance_logs`, a manual `BiometricImportService`, and a live clock-in/out
+`attendance_logs`, and a live clock-in/out
 widget. So the scanner here feeds hrappv3's **native** attendance pipeline
 directly — no SharePoint round-trip and no Excel parsing required. The optional
 mirror exists only so the SharePoint list can stay populated during the

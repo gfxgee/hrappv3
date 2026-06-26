@@ -10,7 +10,6 @@ use App\Filament\Resources\Assets\Schemas\AssetForm;
 use App\Filament\Resources\Assets\Schemas\AssetInfolist;
 use App\Filament\Resources\Assets\Tables\AssetsTable;
 use App\Models\Asset;
-use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -33,11 +32,16 @@ class AssetResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
 
     /**
-     * Asset management is open to HR and super-admins (no dedicated IT role yet).
+     * Roles permitted to manage assets: office managers (the asset owners),
+     * plus HR and super-admins.
+     *
+     * @var list<string>
      */
+    protected const ASSET_ROLES = ['superadmin', 'super_admin', 'hr', 'office_manager'];
+
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasAnyRole(User::MANAGER_ROLES) ?? false;
+        return auth()->user()?->hasAnyRole(self::ASSET_ROLES) ?? false;
     }
 
     public static function getNavigationBadge(): ?string

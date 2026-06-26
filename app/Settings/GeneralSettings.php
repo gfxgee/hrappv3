@@ -6,8 +6,8 @@ use Spatie\LaravelSettings\Settings;
 
 /**
  * Company-wide, UI-configurable business rules. Edited from the admin
- * "Settings" page and consumed by the DTR, leave, dashboard, import, and
- * praise features. Defaults are seeded by the settings migration.
+ * "Settings" page and consumed by the DTR, leave, dashboard, biometric sync,
+ * and praise features. Defaults are seeded by the settings migration.
  */
 class GeneralSettings extends Settings
 {
@@ -47,11 +47,11 @@ class GeneralSettings extends Settings
 
     /*
     |--------------------------------------------------------------------------
-    | Biometric import
+    | Biometric sync
     |--------------------------------------------------------------------------
     */
 
-    /** Default window for collapsing accidental double-punches. */
+    /** Window for collapsing accidental double-punches from the scanner. */
     public int $biometricDedupeMinutes;
 
     /*

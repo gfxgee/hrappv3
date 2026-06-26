@@ -7,6 +7,7 @@ use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\Assets\Pages\CreateAsset;
 use App\Filament\Resources\Assets\Pages\EditAsset;
 use App\Filament\Resources\Assets\Pages\ListAssets;
+use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Models\Asset;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -32,6 +33,16 @@ it('grants asset access to managers but not to plain employees', function () {
 
     $this->actingAs(User::factory()->create());
     expect(AssetResource::canAccess())->toBeFalse();
+});
+
+it('grants asset access to office managers but keeps them out of other admin areas', function () {
+    Role::findOrCreate('office_manager');
+    $officeManager = User::factory()->create();
+    $officeManager->assignRole('office_manager');
+    $this->actingAs($officeManager);
+
+    expect(AssetResource::canAccess())->toBeTrue()
+        ->and(LeaveRequestResource::canAccess())->toBeFalse();
 });
 
 it('creates an asset and auto-generates a sequential asset tag', function () {
