@@ -17,7 +17,7 @@ const features: Feature[] = [
     {
         title: 'Attendance & DTR',
         description:
-            'Web clock in/out plus a clean daily time record with late, undertime, and overtime built in.',
+            'Web and biometric clock in/out, plus a clean daily time record with late, undertime, and overtime built in.',
         accent: 'bg-[#099FDD]/10 text-[#099FDD]',
         icon: (
             <path
@@ -30,7 +30,7 @@ const features: Feature[] = [
     {
         title: 'Leave & Overtime',
         description:
-            'File requests, track remaining credits, and route approvals to the right people.',
+            'File requests, track remaining credits, fix missed punches, and route approvals to the right people.',
         accent: 'bg-[#E94E1B]/10 text-[#E94E1B]',
         icon: (
             <path
@@ -41,9 +41,22 @@ const features: Feature[] = [
         ),
     },
     {
+        title: 'IT Asset Management',
+        description:
+            'Track every device, assign or lend units to staff, log returns — and each person sees the equipment that’s theirs.',
+        accent: 'bg-[#099FDD]/10 text-[#099FDD]',
+        icon: (
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25"
+            />
+        ),
+    },
+    {
         title: 'Team Calendar',
         description:
-            "See who's away across every department and keep holidays in view.",
+            "See who's away across every department, plus a live feed of today's team activity.",
         accent: 'bg-[#238B7F]/10 text-[#238B7F]',
         icon: (
             <path
@@ -54,7 +67,7 @@ const features: Feature[] = [
         ),
     },
     {
-        title: 'Praise Wall',
+        title: 'Praise & Recognition',
         description:
             'Recognize teammates with badges, react and comment, and crown winners every cycle.',
         accent: 'bg-[#D60B52]/10 text-[#D60B52]',
@@ -67,22 +80,48 @@ const features: Feature[] = [
         ),
     },
     {
-        title: 'Biometric Import',
+        title: 'Wellbeing Check-ins',
         description:
-            'Bring fingerprint punches in from your device, trim duplicates, and commit clean records.',
+            'A daily mood check-in that quietly flags who might need support — visible only to HR.',
+        accent: 'bg-[#238B7F]/10 text-[#238B7F]',
+        icon: (
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
+            />
+        ),
+    },
+    {
+        title: 'Anonymous Suggestions',
+        description:
+            'A safe, fully anonymous box for ideas and concerns — read only by HR, with no author ever attached.',
         accent: 'bg-[#F99F29]/15 text-[#b46e0a]',
         icon: (
             <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M7.864 4.243A7.5 7.5 0 0 1 19.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 0 0 4.5 10.5a7.464 7.464 0 0 1-1.15 3.993m1.989 3.559A11.209 11.209 0 0 0 8.25 10.5a3.75 3.75 0 1 1 7.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 0 1-3.6 9.75"
+                d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"
+            />
+        ),
+    },
+    {
+        title: 'Announcements & Alerts',
+        description:
+            'Company-wide announcements and urgent typhoon-style alerts that reach everyone instantly.',
+        accent: 'bg-[#E94E1B]/10 text-[#E94E1B]',
+        icon: (
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 0 1-1.44-4.282m3.102.069a18.03 18.03 0 0 1-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 0 1 8.835 2.535M10.34 6.66a23.847 23.847 0 0 0 8.835-2.535m0 0A23.74 23.74 0 0 0 18.795 3m.38 1.125a23.91 23.91 0 0 1 1.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 0 0 1.014-5.395M21 12.75a2.25 2.25 0 0 0 0-4.5"
             />
         ),
     },
     {
         title: 'Roles & Settings',
         description:
-            'Company rules — lunch breaks, working days, windows — configurable by HR, not by code.',
+            'Company rules and access — lunch breaks, working days, who manages what — configurable by HR, not by code.',
         accent: 'bg-[#271A3D]/10 text-[#271A3D]',
         icon: (
             <path
@@ -98,10 +137,12 @@ const marqueeItems = [
     '⏱️ One-click clock in',
     '🗓️ Leave in seconds',
     '📊 Live HR insights',
+    '💻 Asset tracking',
     '✨ Built-in recognition',
-    '🖐️ Biometric import',
+    '💚 Wellbeing check-ins',
+    '🖐️ Biometric attendance',
     '🏖️ Team calendar',
-    '🏅 Praise cycles',
+    '📣 Daily team activity',
     '⚙️ HR-owned settings',
 ];
 
@@ -114,6 +155,7 @@ const insightBullets = [
 const everydayBullets = [
     'Clock in and out in one click, from anywhere',
     'Leave credits, requests, and overtime — always current',
+    'The equipment assigned to you and your team’s activity today',
     "Praise you've received and what's coming up next",
 ];
 
@@ -340,9 +382,9 @@ export default function Welcome() {
                                 data-hero-sub
                                 className="mt-5 max-w-xl text-base text-white/70 sm:text-lg"
                             >
-                                Attendance, leave, overtime, and recognition —
-                                everything your people do in a day, in one calm
-                                place. No spreadsheets, no chasing.
+                                Attendance, leave, equipment, recognition, and
+                                wellbeing — everything your people do in a day,
+                                in one calm place. No spreadsheets, no chasing.
                             </p>
 
                             <div
@@ -537,8 +579,8 @@ export default function Welcome() {
                                     Everything a workday needs
                                 </h2>
                                 <p className="mt-4 text-base text-[#271A3D]/70">
-                                    Six tools, one login — built around how your
-                                    team actually works.
+                                    One login for everything — built around how
+                                    your team actually works.
                                 </p>
                             </div>
 
