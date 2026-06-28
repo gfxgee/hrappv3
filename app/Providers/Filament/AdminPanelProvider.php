@@ -6,6 +6,7 @@ use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ManageGeneralSettings;
+use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -24,6 +25,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -68,6 +70,14 @@ class AdminPanelProvider extends PanelProvider
                     ->sort(0),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
+            ->plugins([
+                FilamentSpatieLaravelBackupPlugin::make()
+                    ->authorize(fn (): bool => auth()->user() instanceof User && auth()->user()->isSuperAdmin())
+                    ->navigationGroup('Access Control')
+                    ->navigationLabel('Backups')
+                    ->navigationIcon('heroicon-o-circle-stack')
+                    ->navigationSort(99),
+            ])
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -62,6 +62,15 @@ return [
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
+
+            // Used by spatie/laravel-backup's mysqldump. The binary path is
+            // usually empty on production Linux (mysqldump is on PATH); set
+            // DB_DUMP_BINARY_PATH locally if mysqldump isn't discoverable.
+            'dump' => [
+                'dump_binary_path' => env('DB_DUMP_BINARY_PATH', ''),
+                'use_single_transaction' => true,
+                'timeout' => 60 * 5,
+            ],
         ],
 
         'mariadb' => [

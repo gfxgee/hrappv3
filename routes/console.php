@@ -18,3 +18,8 @@ Schedule::command(NotifyCelebrations::class)->dailyAt('08:00');
 
 // Refresh the Active Employees map that gates the SharePoint Timekeeping mirror.
 Schedule::command(RefreshActiveEmployees::class)->dailyAt('05:00');
+
+// Nightly database backup to the configured disk (Google Drive in prod), then
+// prune old backups per the retention policy in config/backup.php.
+Schedule::command('backup:clean')->dailyAt('01:00');
+Schedule::command('backup:run --only-db')->dailyAt('01:30');
