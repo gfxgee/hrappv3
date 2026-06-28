@@ -60,6 +60,7 @@
             @livewire(\App\Filament\Widgets\Employee\MyPraiseWidget::class)
 
             @livewire(\App\Filament\Widgets\Employee\MyTeamTodayWidget::class)
+            @livewire(\App\Filament\Widgets\Employee\TeamActivityWidget::class)
             @livewire(\App\Filament\Widgets\Employee\MyEquipmentWidget::class)
         </div>
     </div>
