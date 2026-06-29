@@ -17,8 +17,8 @@ OUTPUT_FILE="/tmp/deploy_output.txt"
 
     # Pull the latest code from the production branch
     echo "Pulling latest code from production branch..."
-    git fetch origin production
-    git reset --hard origin/production
+    git fetch origin main
+    git reset --hard origin/main
 
     echo "Installing/updating PHP dependencies..."
     # Install/update PHP dependencies
