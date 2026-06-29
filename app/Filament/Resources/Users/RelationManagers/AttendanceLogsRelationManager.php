@@ -58,6 +58,9 @@ class AttendanceLogsRelationManager extends RelationManager
                 TextColumn::make('device')
                     ->badge()
                     ->toggleable(),
+                TextColumn::make('exeral_id')
+                    ->badge()
+                    ->toggleable(),
                 TextColumn::make('remarks')
                     ->searchable()
                     ->toggleable(),
