@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AttendanceLog;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\Carbon;
 
 /**
@@ -42,6 +43,14 @@ class AttendancePunchService
 
         $type = $this->resolveType($punch['title'], $user->id, $punch['punched_at']);
 
+        // Cross-source dedup: the same scan often arrives directly from the
+        // scanner (SyncAttendanceLogFromScan) seconds before this SharePoint
+        // round-trip comes back. If an equivalent punch (same employee, same
+        // type) was already logged within the dedupe window, skip this one.
+        if ($this->alreadyLogged($user->id, $type, $punch['punched_at'])) {
+            return ['status' => 'duplicate'];
+        }
+
         $log = AttendanceLog::create([
             'user_id' => $user->id,
             'type' => $type,
@@ -67,6 +76,38 @@ class AttendancePunchService
             'TIME-OUT' => 'clockout',
             default => $this->autoType($userId, $punchedAt),
         };
+    }
+
+    /**
+     * Whether an equivalent punch (same employee, same type) already exists
+     * within the dedupe window — covering both the direct-scanner round-trip
+     * and accidental repeated scans.
+     */
+    protected function alreadyLogged(int $userId, string $type, Carbon $punchedAt): bool
+    {
+        $minutes = $this->dedupeMinutes();
+
+        if ($minutes <= 0) {
+            return false;
+        }
+
+        return AttendanceLog::query()
+            ->where('user_id', $userId)
+            ->where('type', $type)
+            ->whereBetween('created_at', [
+                $punchedAt->copy()->subMinutes($minutes),
+                $punchedAt->copy()->addMinutes($minutes),
+            ])
+            ->exists();
+    }
+
+    protected function dedupeMinutes(): int
+    {
+        try {
+            return app(GeneralSettings::class)->biometricDedupeMinutes;
+        } catch (\Throwable) {
+            return (int) config('zkteco.dedupe_minutes', 3);
+        }
     }
 
     protected function autoType(int $userId, Carbon $punchedAt): string

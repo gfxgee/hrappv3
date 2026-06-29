@@ -119,6 +119,44 @@ it('is idempotent on re-delivery of the same punch', function () {
     expect(AttendanceLog::query()->count())->toBe(1);
 });
 
+it('skips a punch already logged by the direct scanner (cross-source dedup)', function () {
+    $user = User::factory()->create(['email' => 'vevien@digitalfeet.com']);
+
+    // The scanner logged this clock-in directly ~15s before the SharePoint
+    // round-trip arrives via the webhook.
+    $direct = AttendanceLog::create([
+        'user_id' => $user->id,
+        'type' => 'clockin',
+        'device' => 'biometric',
+        'remarks' => 'Recorded from biometric scanner',
+    ]);
+    $direct->forceFill(['created_at' => '2026-06-23T08:00:45Z'])->save();
+
+    postPunch(punchPayload(['id' => 7, 'title' => 'TIME-IN', 'punched_at' => '2026-06-23T08:01:00Z']))
+        ->assertOk()
+        ->assertJson(['status' => 'duplicate']);
+
+    expect(AttendanceLog::query()->count())->toBe(1);
+});
+
+it('still logs a punch when the nearby existing one is a different type', function () {
+    $user = User::factory()->create(['email' => 'vevien@digitalfeet.com']);
+
+    $clockIn = AttendanceLog::create([
+        'user_id' => $user->id,
+        'type' => 'clockin',
+        'device' => 'biometric',
+    ]);
+    $clockIn->forceFill(['created_at' => '2026-06-23T08:00:45Z'])->save();
+
+    // A clock-out moments later is a real, distinct punch — not a duplicate.
+    postPunch(punchPayload(['id' => 8, 'title' => 'TIME-OUT', 'punched_at' => '2026-06-23T08:01:00Z']))
+        ->assertOk()
+        ->assertJson(['status' => 'created', 'type' => 'clockout']);
+
+    expect(AttendanceLog::query()->count())->toBe(2);
+});
+
 it('skips an unknown employee without erroring', function () {
     postPunch(punchPayload(['email' => 'ghost@digitalfeet.com']))
         ->assertOk()
