@@ -30,7 +30,7 @@ use Spatie\Permission\Traits\HasRoles;
     'display_name', 'name', 'first_name', 'last_name', 'middle_name', 'suffix_name',
     'email', 'personal_email', 'password', 'photo', 'sex', 'status', 'active',
     'bio_metric_id', 'birthday', 'date_hired', 'regular_date', 'phone', 'civil_status',
-    'employment_status', 'department_id', 'job_title', 'sss', 'phic', 'hdmf_tin',
+    'employment_status', 'department_id', 'manager_id', 'is_org_head', 'job_title', 'sss', 'phic', 'hdmf_tin',
     'government_documents', 'pc_specifications', 'job_description', 'permanent_address', 'emergency_contact',
 ])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -54,8 +54,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
      */
     protected function activitylogFields(): array
     {
-        return ['name', 'email', 'status', 'active', 'department_id', 'job_title', 'employment_status',
-            'government_documents', 'pc_specifications'];
+        return ['name', 'email', 'status', 'active', 'department_id', 'manager_id', 'is_org_head',
+            'job_title', 'employment_status', 'government_documents', 'pc_specifications'];
     }
 
     /**
@@ -118,6 +118,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
             'emergency_contact' => 'array',
             'government_documents' => 'array',
             'pc_specifications' => 'array',
+            'is_org_head' => 'boolean',
         ];
     }
 
@@ -213,6 +214,51 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function ledDepartments(): BelongsToMany
     {
         return $this->belongsToMany(Department::class, 'team_leaders')->withTimestamps();
+    }
+
+    /**
+     * The employee this person reports to in the org chart (null for the CEO).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function manager(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /**
+     * Employees who report directly to this person.
+     *
+     * @return HasMany<User, $this>
+     */
+    public function directReports(): HasMany
+    {
+        return $this->hasMany(User::class, 'manager_id');
+    }
+
+    /**
+     * IDs of everyone below this user in the org chart (all descendants).
+     * Used to keep the manager picker from creating a reporting loop.
+     *
+     * @return list<int>
+     */
+    public function descendantIds(): array
+    {
+        $found = [];
+        $stack = self::query()->where('manager_id', $this->id)->pluck('id')->all();
+
+        while ($stack !== []) {
+            $id = array_pop($stack);
+
+            if (in_array($id, $found, true)) {
+                continue;
+            }
+
+            $found[] = $id;
+            $stack = array_merge($stack, self::query()->where('manager_id', $id)->pluck('id')->all());
+        }
+
+        return $found;
     }
 
     /**

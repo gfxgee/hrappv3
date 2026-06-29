@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Schemas;
 use App\Filament\Support\GovernmentDocumentsRepeater;
 use App\Filament\Support\PcSpecificationsRepeater;
 use App\Filament\Support\TimeSelect;
+use App\Models\User;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\KeyValue;
@@ -105,6 +106,22 @@ class UserForm
                             ->visible(fn (): bool => auth()->user()?->hasAnyRole(['superadmin', 'super_admin', 'hr']) ?? false),
                         TextInput::make('job_title'),
                         TextInput::make('employment_status'),
+                        Select::make('manager_id')
+                            ->label('Reports to (manager)')
+                            ->options(fn (?User $record): array => User::query()
+                                ->active()
+                                ->when($record, fn ($query) => $query
+                                    ->whereKeyNot($record->id)
+                                    ->whereNotIn('id', $record->descendantIds()))
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->placeholder('No manager (top of org chart)')
+                            ->helperText('Who this employee reports to, for the org chart. Leave blank for the company head.'),
+                        Toggle::make('is_org_head')
+                            ->label('Top of org chart (company head / CEO)')
+                            ->helperText('Marks this person as the root of the org chart.'),
                         TextInput::make('bio_metric_id')
                             ->numeric(),
                         DatePicker::make('date_hired'),

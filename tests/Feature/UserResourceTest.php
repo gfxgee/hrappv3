@@ -268,6 +268,19 @@ it('lets HR record an employee\'s PC specifications and logs the change', functi
         ->toBe('Corsair Vengeance 8GB');
 });
 
+it('lets HR set an employee\'s manager for the org chart', function () {
+    $boss = User::factory()->create();
+    $employee = User::factory()->create();
+
+    Livewire::test(EditUser::class, ['record' => $employee->getRouteKey()])
+        ->fillForm(['manager_id' => $boss->id])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($employee->refresh()->manager_id)->toBe($boss->id)
+        ->and($boss->refresh()->directReports->pluck('id'))->toContain($employee->id);
+});
+
 it('lists a user\'s assigned equipment in the relation manager', function () {
     $employee = User::factory()->create();
     $asset = Asset::factory()->create(['name' => 'Logitech MX Master 3']);

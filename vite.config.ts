@@ -9,7 +9,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/css/filament/admin/theme.css', 'resources/js/app.tsx'],
+            input: ['resources/css/app.css', 'resources/css/filament/admin/theme.css', 'resources/js/app.tsx', 'resources/js/org-chart.js'],
             // refresh: true,
             refresh: [
                 'app/Filament/**',
