@@ -55,12 +55,17 @@ class MyTeamTodayWidget extends Widget
             ->take(12)
             ->get();
 
-        $clockedInIds = AttendanceLog::query()
+        // The device of each colleague's first clock-in today drives their
+        // status: a biometric scan means they're in the office, a web clock-in
+        // means they're working from home.
+        $clockInDeviceByUser = AttendanceLog::query()
             ->whereIn('user_id', $colleagues->pluck('id'))
             ->whereDate('created_at', today())
             ->where('type', 'clockin')
-            ->pluck('user_id')
-            ->flip();
+            ->orderBy('created_at')
+            ->get(['user_id', 'device'])
+            ->groupBy('user_id')
+            ->map(fn ($logs): ?string => $logs->first()->device);
 
         $leavesByUser = LeaveRequest::query()
             ->whereIn('user_id', $colleagues->pluck('id'))
@@ -70,14 +75,16 @@ class MyTeamTodayWidget extends Widget
             ->get()
             ->keyBy('user_id');
 
-        return $colleagues->map(function (User $user) use ($clockedInIds, $leavesByUser): array {
+        return $colleagues->map(function (User $user) use ($clockInDeviceByUser, $leavesByUser): array {
             $leave = $leavesByUser->get($user->id);
+            $device = $clockInDeviceByUser->get($user->id);
 
             [$status, $color] = match (true) {
-                $leave?->request_type === LeaveType::WFH => ['Remote', 'info'],
                 $leave?->request_type === LeaveType::SICK => ['Sick', 'danger'],
-                $leave !== null => ['On leave', 'warning'],
-                $clockedInIds->has($user->id) => ['In office', 'success'],
+                $leave !== null && $leave->request_type !== LeaveType::WFH => ['On leave', 'warning'],
+                $device === 'biometric' => ['In office', 'success'],
+                $device === 'web' => ['Work from home', 'info'],
+                $leave?->request_type === LeaveType::WFH => ['Work from home', 'info'],
                 default => ['—', 'gray'],
             };
 

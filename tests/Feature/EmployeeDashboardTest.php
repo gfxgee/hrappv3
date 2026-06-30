@@ -158,7 +158,10 @@ it('shows team members with the correct status for today', function () {
     $this->user->update(['department_id' => $department->id]);
 
     $inOffice = User::factory()->create(['status' => 'active', 'department_id' => $department->id, 'name' => 'In Office']);
-    AttendanceLog::create(['user_id' => $inOffice->id, 'type' => 'clockin', 'device' => 'web']);
+    AttendanceLog::create(['user_id' => $inOffice->id, 'type' => 'clockin', 'device' => 'biometric']);
+
+    $fromHome = User::factory()->create(['status' => 'active', 'department_id' => $department->id, 'name' => 'From Home']);
+    AttendanceLog::create(['user_id' => $fromHome->id, 'type' => 'clockin', 'device' => 'web']);
 
     $remote = User::factory()->create(['status' => 'active', 'department_id' => $department->id, 'name' => 'Remote Worker']);
     LeaveRequest::factory()->for($remote)->create([
@@ -182,9 +185,10 @@ it('shows team members with the correct status for today', function () {
     $rows = Livewire::test(MyTeamTodayWidget::class)->instance()->members();
     $byName = $rows->keyBy(fn (array $row): string => $row['user']->name);
 
-    expect($rows)->toHaveCount(4)
+    expect($rows)->toHaveCount(5)
         ->and($byName['In Office']['status'])->toBe('In office')
-        ->and($byName['Remote Worker']['status'])->toBe('Remote')
+        ->and($byName['From Home']['status'])->toBe('Work from home')
+        ->and($byName['Remote Worker']['status'])->toBe('Work from home')
         ->and($byName['Sick Person']['status'])->toBe('Sick')
         ->and($byName['No Activity']['status'])->toBe('—')
         ->and($byName->has('Other Dept'))->toBeFalse();
