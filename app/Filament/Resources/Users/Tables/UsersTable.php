@@ -92,6 +92,7 @@ class UsersTable
                     RestoreBulkAction::make(),
                 ]),
             ])
+            ->defaultSort('name', 'asc')
             ->defaultPaginationPageOption(50)
             ->defaultGroup('status');
     }
