@@ -22,7 +22,7 @@ OUTPUT_FILE="/tmp/deploy_output.txt"
 
     echo "Installing/updating PHP dependencies..."
     # Install/update PHP dependencies
-    #composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+    #composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --ignore-platform-req=ext-gd
 
     # Install/update Node.js dependencies and build assets
     echo "Building frontend assets..."
