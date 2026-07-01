@@ -16,7 +16,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -74,8 +74,6 @@ class AssetsTable
             ->filters([
                 SelectFilter::make('category')
                     ->options(AssetCategory::toArray()),
-                SelectFilter::make('status')
-                    ->options(AssetStatus::toArray()),
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -96,7 +94,7 @@ class AssetsTable
                             ->default(AssignmentType::PERMANENT->value)
                             ->live()
                             ->required(),
-                        DateTimePicker::make('due_at')
+                        DatePicker::make('due_at')
                             ->label('Due back')
                             ->visible(fn (Get $get): bool => $get('type') === AssignmentType::BORROW->value)
                             ->required(fn (Get $get): bool => $get('type') === AssignmentType::BORROW->value),

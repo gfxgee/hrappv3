@@ -8,7 +8,10 @@ use App\Models\AssetAssignment;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AssignmentsRelationManager extends RelationManager
 {
@@ -55,6 +58,21 @@ class AssignmentsRelationManager extends RelationManager
                 TextColumn::make('notes')
                     ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('type')
+                    ->label('Type')
+                    ->options(AssignmentType::toArray()),
+                TernaryFilter::make('status')
+                    ->label('Status')
+                    ->placeholder('All')
+                    ->trueLabel('Currently held')
+                    ->falseLabel('Returned')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereNull('returned_at'),
+                        false: fn (Builder $query): Builder => $query->whereNotNull('returned_at'),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ]);
     }
 }

@@ -7,6 +7,7 @@ use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\Assets\Pages\CreateAsset;
 use App\Filament\Resources\Assets\Pages\EditAsset;
 use App\Filament\Resources\Assets\Pages\ListAssets;
+use App\Filament\Resources\Assets\RelationManagers\AssignmentsRelationManager;
 use App\Filament\Resources\LeaveRequests\LeaveRequestResource;
 use App\Models\Asset;
 use App\Models\User;
@@ -137,12 +138,12 @@ it('soft-deletes an asset', function () {
         ->and(Asset::withTrashed()->find($asset->id)?->trashed())->toBeTrue();
 });
 
-it('filters assets by status', function () {
+it('filters assets by status via the status tabs', function () {
     $available = Asset::factory()->create(['status' => AssetStatus::AVAILABLE]);
     $retired = Asset::factory()->create(['status' => AssetStatus::RETIRED]);
 
     Livewire::test(ListAssets::class)
-        ->filterTable('status', AssetStatus::AVAILABLE->value)
+        ->set('activeTab', AssetStatus::AVAILABLE->value)
         ->assertCanSeeTableRecords([$available])
         ->assertCanNotSeeTableRecords([$retired]);
 });
@@ -183,6 +184,52 @@ it('returns an assigned asset from the table action', function () {
     expect($asset->status)->toBe(AssetStatus::AVAILABLE)
         ->and($asset->assigned_to)->toBeNull()
         ->and($asset->assignments()->open()->count())->toBe(0);
+});
+
+it('filters the assignment history by type', function () {
+    $asset = Asset::factory()->create();
+    $borrow = $asset->assignments()->create([
+        'user_id' => User::factory()->create()->id,
+        'type' => AssignmentType::BORROW,
+        'assigned_at' => now(),
+    ]);
+    $permanent = $asset->assignments()->create([
+        'user_id' => User::factory()->create()->id,
+        'type' => AssignmentType::PERMANENT,
+        'assigned_at' => now(),
+    ]);
+
+    Livewire::test(AssignmentsRelationManager::class, [
+        'ownerRecord' => $asset,
+        'pageClass' => EditAsset::class,
+    ])
+        ->assertSuccessful()
+        ->filterTable('type', AssignmentType::BORROW->value)
+        ->assertCanSeeTableRecords([$borrow])
+        ->assertCanNotSeeTableRecords([$permanent]);
+});
+
+it('filters the assignment history by currently-held status', function () {
+    $asset = Asset::factory()->create();
+    $held = $asset->assignments()->create([
+        'user_id' => User::factory()->create()->id,
+        'type' => AssignmentType::BORROW,
+        'assigned_at' => now(),
+    ]);
+    $returned = $asset->assignments()->create([
+        'user_id' => User::factory()->create()->id,
+        'type' => AssignmentType::PERMANENT,
+        'assigned_at' => now()->subMonth(),
+        'returned_at' => now(),
+    ]);
+
+    Livewire::test(AssignmentsRelationManager::class, [
+        'ownerRecord' => $asset,
+        'pageClass' => EditAsset::class,
+    ])
+        ->filterTable('status', true)
+        ->assertCanSeeTableRecords([$held])
+        ->assertCanNotSeeTableRecords([$returned]);
 });
 
 it('hides assign on a held asset and return on an available one', function () {
