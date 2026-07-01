@@ -56,7 +56,7 @@ class RequestNotifier
                     ->url(LeaveRequestResource::getUrl('edit', ['record' => $request]))
                     ->markAsRead(),
             ])
-            ->sendToDatabase($recipients);
+            ->sendToDatabase($recipients, isEventDispatched: true);
     }
 
     /**
@@ -92,7 +92,7 @@ class RequestNotifier
                     ->url(OverTimeRequestResource::getUrl('edit', ['record' => $request]))
                     ->markAsRead(),
             ])
-            ->sendToDatabase($recipients);
+            ->sendToDatabase($recipients, isEventDispatched: true);
     }
 
     /**
@@ -128,7 +128,7 @@ class RequestNotifier
                     ->url(AttendanceCorrectionRequestResource::getUrl('index'))
                     ->markAsRead(),
             ])
-            ->sendToDatabase($recipients);
+            ->sendToDatabase($recipients, isEventDispatched: true);
     }
 
     /**
@@ -158,7 +158,7 @@ class RequestNotifier
                     ? ', due back '.$assignment->due_at->format('M j, Y')
                     : '',
             ))
-            ->sendToDatabase(collect([$holder]));
+            ->sendToDatabase(collect([$holder]), isEventDispatched: true);
     }
 
     /**

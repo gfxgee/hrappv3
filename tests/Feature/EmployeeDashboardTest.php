@@ -17,6 +17,7 @@ use App\Models\Praise;
 use App\Models\User;
 use App\Services\LeaveCreditService;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -192,6 +193,17 @@ it('shows team members with the correct status for today', function () {
         ->and($byName['Sick Person']['status'])->toBe('Sick')
         ->and($byName['No Activity']['status'])->toBe('—')
         ->and($byName->has('Other Dept'))->toBeFalse();
+});
+
+it('alerts the employee with a red toast when they have unread notifications', function () {
+    Notification::make()->title('Something happened')->sendToDatabase($this->user);
+
+    Livewire::test(Dashboard::class)
+        ->assertNotified('You have 1 new notification');
+});
+
+it('does not alert when there are no unread notifications', function () {
+    Livewire::test(Dashboard::class)->assertNotNotified();
 });
 
 it('lists only praise received by the current user', function () {

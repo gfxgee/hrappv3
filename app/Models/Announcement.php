@@ -88,7 +88,7 @@ class Announcement extends Model
             ->icon('heroicon-o-exclamation-triangle')
             ->iconColor('danger')
             ->body($body)
-            ->sendToDatabase($recipients);
+            ->sendToDatabase($recipients, isEventDispatched: true);
     }
 
     /**

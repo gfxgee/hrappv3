@@ -5,7 +5,9 @@ namespace App\Filament\Pages;
 use App\Models\User;
 use App\Services\CelebrationService;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Filament\Support\Icons\Heroicon;
 
 /**
  * The employee home: greeting header, personal stat cards, quick actions,
@@ -15,6 +17,43 @@ use Filament\Pages\Dashboard as BaseDashboard;
 class Dashboard extends BaseDashboard
 {
     protected string $view = 'filament.pages.dashboard';
+
+    public function mount(): void
+    {
+        $this->alertUnreadNotifications();
+    }
+
+    /**
+     * Show a red, auto-dismissing toast when the employee lands on the
+     * dashboard with unread in-app notifications. Only re-alerts when the
+     * unread count has grown since the last visit, so it doesn't nag.
+     */
+    protected function alertUnreadNotifications(): void
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return;
+        }
+
+        $unread = $user->unreadNotifications()->count();
+        $lastAlerted = (int) session('unread_notifications_alerted', 0);
+        session()->put('unread_notifications_alerted', $unread);
+
+        if ($unread <= 0 || $unread <= $lastAlerted) {
+            return;
+        }
+
+        Notification::make()
+            ->danger()
+            ->icon(Heroicon::OutlinedBell)
+            ->title($unread === 1
+                ? 'You have 1 new notification'
+                : "You have {$unread} new notifications")
+            ->body('Open the bell menu (top-right) to see the latest updates.')
+            ->duration(9000)
+            ->send();
+    }
 
     /**
      * Browser tab / document title — includes the signed-in employee's name.

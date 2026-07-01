@@ -54,7 +54,7 @@ class NotifyCelebrations extends Command
             ->icon('heroicon-o-gift')
             ->iconColor('warning')
             ->body(new HtmlString($lines->implode('<br>')))
-            ->sendToDatabase($recipients);
+            ->sendToDatabase($recipients, isEventDispatched: true);
 
         $this->info(sprintf(
             'Notified %d employee(s) of %d celebration(s).',
