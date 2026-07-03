@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Mobile\AccountController;
 use App\Http\Controllers\Mobile\AlertController;
 use App\Http\Controllers\Mobile\AttendanceController;
 use App\Http\Controllers\Mobile\HomeController;
@@ -34,4 +35,6 @@ Route::middleware(['auth', 'verified', ShareMobileBadge::class])
 
         Route::get('alerts', [AlertController::class, 'index'])->name('alerts');
         Route::post('alerts/read', [AlertController::class, 'markAllRead'])->name('alerts.read');
+
+        Route::get('account', [AccountController::class, 'index'])->name('account');
     });

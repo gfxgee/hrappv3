@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import { Bell, Clock, Home, Users } from 'lucide-react';
+import { Bell, Clock, Home, User, Users } from 'lucide-react';
+import AccountController from '@/actions/App/Http/Controllers/Mobile/AccountController';
 import AlertController from '@/actions/App/Http/Controllers/Mobile/AlertController';
 import AttendanceController from '@/actions/App/Http/Controllers/Mobile/AttendanceController';
 import HomeController from '@/actions/App/Http/Controllers/Mobile/HomeController';
@@ -11,6 +12,7 @@ const items = [
     { label: 'Attendance', icon: Clock, href: AttendanceController.index() },
     { label: 'Team', icon: Users, href: TeamController.index() },
     { label: 'Alerts', icon: Bell, href: AlertController.index() },
+    { label: 'Account', icon: User, href: AccountController.index() },
 ] as const;
 
 export function BottomNav({ unread = 0 }: { unread?: number }) {

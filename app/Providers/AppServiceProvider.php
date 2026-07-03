@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Http\Responses\FilamentLoginResponse;
 use Carbon\CarbonImmutable;
+use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -23,7 +25,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Route phones and regular employees to the mobile app after login,
+        // instead of Filament's default admin-panel redirect.
+        $this->app->bind(
+            LoginResponse::class,
+            FilamentLoginResponse::class,
+        );
     }
 
     /**

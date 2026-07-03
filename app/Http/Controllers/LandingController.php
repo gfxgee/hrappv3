@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\MobileAudience;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,27 +17,14 @@ class LandingController extends Controller
      */
     public function __invoke(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
-
-        if ($user === null) {
+        if ($request->user() === null) {
             return Inertia::render('welcome');
         }
 
-        if ($this->isMobile($request) || (! $user->isManager() && ! $user->isTeamLeader())) {
+        if (MobileAudience::matches($request)) {
             return redirect()->route('mobile.home');
         }
 
         return redirect()->route('dashboard');
-    }
-
-    /**
-     * A lightweight user-agent check for phones and small tablets.
-     */
-    private function isMobile(Request $request): bool
-    {
-        return (bool) preg_match(
-            '/Mobile|Android|iPhone|iPod|Windows Phone|BlackBerry|Opera Mini|IEMobile/i',
-            (string) $request->userAgent(),
-        );
     }
 }
