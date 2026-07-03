@@ -29,7 +29,7 @@ export function OvertimeSheet({ trigger }: { trigger: ReactNode }) {
                     method="post"
                     options={{ preserveScroll: true }}
                     onSuccess={() => setOpen(false)}
-                    className="p-4"
+                    className="p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
                 >
                     {({ processing, errors }) => (
                         <div className="flex flex-col gap-3.5">

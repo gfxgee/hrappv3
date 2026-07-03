@@ -3,10 +3,11 @@
 use App\Http\Controllers\Auth\MicrosoftSsoController;
 use App\Http\Controllers\DtrPdfController;
 use App\Http\Controllers\IclockController;
+use App\Http\Controllers\LandingController;
 use App\Http\Middleware\RedirectToMobileApp;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', LandingController::class)->name('home');
 
 // ZKTeco biometric scanner endpoints (no auth — the device speaks plain HTTP
 // over a static IP and cannot log in). Scans are stored raw and synced into

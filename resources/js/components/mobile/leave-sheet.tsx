@@ -57,7 +57,7 @@ export function LeaveSheet({
                                 Your remaining balance is shown on each
                             </p>
                         </SheetHeader>
-                        <div className="grid grid-cols-2 gap-2.5 p-4 pt-0">
+                        <div className="grid grid-cols-2 gap-2.5 px-4 pt-0 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
                             {balances.map((balance) => (
                                 <button
                                     key={balance.type}
@@ -95,7 +95,7 @@ export function LeaveSheet({
                         method="post"
                         options={{ preserveScroll: true }}
                         onSuccess={() => setOpen(false)}
-                        className="p-4"
+                        className="p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
                     >
                         {({ processing, errors }) => (
                             <div className="flex flex-col gap-3.5">
@@ -116,7 +116,7 @@ export function LeaveSheet({
                                     </span>
                                     <span>
                                         <span className="block text-[15px] font-bold text-purple-950">
-                                            {selected.label} leave
+                                            {selected.label}
                                         </span>
                                         <span className="block text-[11.5px] font-semibold text-yellow-700">
                                             {selected.tracked

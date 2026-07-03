@@ -164,7 +164,7 @@ export default function MobileHome({
                                 {balance.tracked ? balance.remaining : '—'}
                             </div>
                             <div className="text-[11.5px] text-gray-800">
-                                {balance.label}
+                                {balance.label.replace(/ Leave$/, '')}
                             </div>
                         </div>
                     ))}
