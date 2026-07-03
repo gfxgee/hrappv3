@@ -4,7 +4,7 @@ use App\Http\Controllers\Auth\MicrosoftSsoController;
 use App\Http\Controllers\DtrPdfController;
 use App\Http\Controllers\IclockController;
 use App\Http\Controllers\LandingController;
-use App\Http\Middleware\RedirectToMobileApp;
+use App\Http\Middleware\RedirectMobileToApp;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('home');
@@ -33,10 +33,10 @@ Route::get('admin/auth/microsoft/callback', [MicrosoftSsoController::class, 'cal
     ->name('sso.microsoft.callback');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Regular employees are bounced to the mobile app; HR/admins and team
-    // leaders keep the desktop dashboard.
+    // Visitors on a phone are bounced to the mobile app; desktop keeps the
+    // dashboard. Device-based, not role-based.
     Route::inertia('dashboard', 'dashboard')
-        ->middleware(RedirectToMobileApp::class)
+        ->middleware(RedirectMobileToApp::class)
         ->name('dashboard');
 });
 

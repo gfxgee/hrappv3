@@ -6,6 +6,7 @@ use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ManageGeneralSettings;
+use App\Http\Middleware\RedirectMobileToApp;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -88,6 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                RedirectMobileToApp::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

@@ -12,9 +12,9 @@ use App\Http\Middleware\ShareMobileBadge;
 use Illuminate\Support\Facades\Route;
 
 /*
-| The employee self-service mobile app. Regular employees are routed here
-| (see RedirectToMobileApp); HR/admins keep the Filament admin panel. Deep HR
-| work stays on desktop — this is the clock-in / leave / attendance surface.
+| The employee self-service mobile app. Phone visitors are routed here
+| (see RedirectMobileToApp); desktop keeps the Filament admin panel. This is
+| the clock-in / leave / attendance surface, sized for one-handed use.
 */
 Route::middleware(['auth', 'verified', ShareMobileBadge::class])
     ->prefix('m')

@@ -1,44 +1,27 @@
 <?php
 
 use App\Http\Responses\FilamentLoginResponse;
-use App\Models\User;
 use App\Support\MobileAudience;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
 
-function requestAs(User $user, ?string $userAgent = null): Request
+function requestWithAgent(?string $userAgent): Request
 {
-    $request = Request::create('/admin/login', 'POST', server: $userAgent ? ['HTTP_USER_AGENT' => $userAgent] : []);
-    $request->setUserResolver(fn () => $user);
-
-    return $request;
+    return Request::create('/admin/login', 'POST', server: $userAgent ? ['HTTP_USER_AGENT' => $userAgent] : []);
 }
 
-it('treats a regular employee as the mobile audience', function () {
-    expect(MobileAudience::matches(requestAs(User::factory()->create())))->toBeTrue();
+it('detects a phone as the mobile audience', function () {
+    expect(MobileAudience::isMobile(requestWithAgent(iphoneUa())))->toBeTrue();
 });
 
-it('does not treat a desktop manager as the mobile audience', function () {
-    Role::findOrCreate('hr', 'web');
-    $manager = User::factory()->create();
-    $manager->assignRole('hr');
+it('does not treat a desktop browser as mobile', function () {
+    $desktop = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 
-    expect(MobileAudience::matches(requestAs($manager)))->toBeFalse();
+    expect(MobileAudience::isMobile(requestWithAgent($desktop)))->toBeFalse();
 });
 
-it('treats a manager on a phone as the mobile audience', function () {
-    Role::findOrCreate('hr', 'web');
-    $manager = User::factory()->create();
-    $manager->assignRole('hr');
-
-    $iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1';
-
-    expect(MobileAudience::matches(requestAs($manager, $iphone)))->toBeTrue();
-});
-
-it('redirects the mobile audience to the mobile app after Filament login', function () {
-    $response = (new FilamentLoginResponse)->toResponse(requestAs(User::factory()->create()));
+it('redirects a phone to the mobile app after Filament login', function () {
+    $response = (new FilamentLoginResponse)->toResponse(requestWithAgent(iphoneUa()));
 
     expect($response)->toBeInstanceOf(RedirectResponse::class)
         ->and($response->getTargetUrl())->toBe(route('mobile.home'));

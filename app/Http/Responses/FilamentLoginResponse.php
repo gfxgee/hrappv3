@@ -9,14 +9,14 @@ use Livewire\Features\SupportRedirects\Redirector;
 
 /**
  * All logins funnel through the Filament panel login (see FortifyServiceProvider).
- * Send phones and regular employees to the mobile app afterwards instead of the
- * admin panel; everyone else keeps Filament's default panel redirect.
+ * Send phones to the mobile app afterwards; desktop keeps Filament's default
+ * panel redirect. Device-based only — role never decides the destination.
  */
 class FilamentLoginResponse extends BaseLoginResponse
 {
     public function toResponse($request): RedirectResponse|Redirector
     {
-        if (MobileAudience::matches($request)) {
+        if (MobileAudience::isMobile($request)) {
             return new RedirectResponse(route('mobile.home'));
         }
 

@@ -21,7 +21,7 @@ class LandingController extends Controller
             return Inertia::render('welcome');
         }
 
-        if (MobileAudience::matches($request)) {
+        if (MobileAudience::isMobile($request)) {
             return redirect()->route('mobile.home');
         }
 
