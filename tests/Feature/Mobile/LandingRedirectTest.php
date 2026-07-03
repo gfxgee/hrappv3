@@ -9,10 +9,10 @@ it('shows the welcome page to guests', function () {
         ->assertInertia(fn (Assert $page) => $page->component('welcome'));
 });
 
-it('sends a signed-in desktop visitor to the dashboard', function () {
+it('sends a signed-in desktop visitor to the admin panel', function () {
     $this->actingAs(User::factory()->create());
 
-    $this->get(route('home'))->assertRedirect(route('dashboard'));
+    $this->get(route('home'))->assertRedirect('/admin');
 });
 
 it('sends a signed-in phone visitor to the mobile app', function () {

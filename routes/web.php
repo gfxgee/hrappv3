@@ -4,7 +4,6 @@ use App\Http\Controllers\Auth\MicrosoftSsoController;
 use App\Http\Controllers\DtrPdfController;
 use App\Http\Controllers\IclockController;
 use App\Http\Controllers\LandingController;
-use App\Http\Middleware\RedirectMobileToApp;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', LandingController::class)->name('home');
@@ -33,11 +32,10 @@ Route::get('admin/auth/microsoft/callback', [MicrosoftSsoController::class, 'cal
     ->name('sso.microsoft.callback');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    // Visitors on a phone are bounced to the mobile app; desktop keeps the
-    // dashboard. Device-based, not role-based.
-    Route::inertia('dashboard', 'dashboard')
-        ->middleware(RedirectMobileToApp::class)
-        ->name('dashboard');
+    // There is no standalone dashboard page: desktop lives in the Filament
+    // admin panel (/admin), phones in the mobile app (/m/home). Kept only as a
+    // named redirect so existing dashboard() links resolve to /admin.
+    Route::get('dashboard', fn () => redirect('/admin'))->name('dashboard');
 });
 
 require __DIR__.'/mobile.php';

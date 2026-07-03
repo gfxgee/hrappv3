@@ -73,6 +73,8 @@ return [
     |
     */
 
+    // Fortify's built-in flows (email verification, etc.) redirect here; the
+    // /dashboard route immediately forwards to /admin, so no one lands on it.
     'home' => '/dashboard',
 
     /*

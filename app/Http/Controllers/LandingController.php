@@ -11,9 +11,9 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 class LandingController extends Controller
 {
     /**
-     * The site's front door. Guests see the welcome page; signed-in users are
-     * sent straight to their app — the mobile self-service app on phones (or
-     * for regular employees), the desktop dashboard otherwise.
+     * The site's front door. Guests see the welcome page; signed-in users go
+     * straight to their app — the mobile self-service app on phones, the
+     * Filament admin panel on desktop.
      */
     public function __invoke(Request $request): Response|RedirectResponse
     {
@@ -25,6 +25,6 @@ class LandingController extends Controller
             return redirect()->route('mobile.home');
         }
 
-        return redirect()->route('dashboard');
+        return redirect('/admin');
     }
 }
