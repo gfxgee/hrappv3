@@ -108,6 +108,16 @@ it('renders the edit page', function () {
         ->assertSuccessful();
 });
 
+it('loads the stored payslip link into the edit form for HR/admins', function () {
+    $user = User::factory()->create();
+    $link = 'https://docs.google.com/spreadsheets/d/1AbcXyz/edit';
+    $user->userData()->create(['payslip_link' => $link]);
+
+    Livewire::test(EditUser::class, ['record' => $user->getRouteKey()])
+        ->assertSuccessful()
+        ->assertFormSet(['userData.payslip_link' => $link]);
+});
+
 it('renders the read-only view page that names link to', function () {
     $user = User::factory()->create(['name' => 'Linked Employee']);
 

@@ -14,15 +14,6 @@ class UserData extends Model
 
     protected $guarded = [];
 
-    /**
-     * Never expose the payslip link through array/JSON serialization (e.g. to
-     * the Inertia frontend). It is HR/admin-only and surfaced explicitly where
-     * authorized — see UserForm. Direct attribute access is unaffected.
-     *
-     * @var list<string>
-     */
-    protected $hidden = ['payslip_link'];
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
