@@ -175,6 +175,12 @@ class UserForm
                             ->default(0),
                         TimeSelect::make('time_in', '10:00'),
                         TimeSelect::make('time_out', '18:00'),
+                        TextInput::make('payslip_link')
+                            ->label('Payslip link')
+                            ->url()
+                            ->columnSpanFull()
+                            ->helperText('Google Sheets link to this employee\'s payslip. Only HR and admins can see or edit this.')
+                            ->visible(fn (): bool => auth()->user()?->isManager() ?? false),
                     ]),
 
                 Section::make('Roles & Access')

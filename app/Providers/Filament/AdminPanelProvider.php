@@ -13,6 +13,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -69,6 +70,18 @@ class AdminPanelProvider extends PanelProvider
                     ->url(fn (): string => ManageGeneralSettings::getUrl())
                     ->visible(fn (): bool => ManageGeneralSettings::canAccess())
                     ->sort(0),
+            ])
+            // A quick link to the employee's own payslip (a Google Sheet),
+            // opened in a new tab. Only shows when they have one set. This is
+            // the owner viewing their own link — HR/admins set it per employee.
+            ->navigationItems([
+                NavigationItem::make('Payslip')
+                    ->group('My Workspace')
+                    ->icon('heroicon-o-banknotes')
+                    ->sort(15)
+                    ->url(fn (): string => auth()->user()?->userData?->payslip_link ?? '#')
+                    ->openUrlInNewTab()
+                    ->visible(fn (): bool => filled(auth()->user()?->userData?->payslip_link)),
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->plugins([
