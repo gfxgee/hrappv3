@@ -68,6 +68,70 @@ it('renders the leave request list for a manager', function () {
     Livewire::test(ListLeaveRequests::class)->assertSuccessful();
 });
 
+it('exports only the filtered leave requests to CSV', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $alice = User::factory()->create(['name' => 'Alice', 'email' => 'alice@example.com']);
+    $bob = User::factory()->create(['name' => 'Bob', 'email' => 'bob@example.com']);
+    LeaveRequest::factory()->for($alice)->create(['status' => AttendanceStatus::APPROVED]);
+    LeaveRequest::factory()->for($bob)->create(['status' => AttendanceStatus::REJECTED]);
+
+    $response = Livewire::test(ListLeaveRequests::class)
+        ->filterTable('status', AttendanceStatus::APPROVED->value)
+        ->instance()
+        ->exportCsv();
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($csv)->toContain('Name', 'Email', 'Type') // header row
+        ->and($csv)->toContain('Alice')
+        ->and($csv)->not->toContain('Bob'); // filtered out by status
+});
+
+it('applies the date range filter to the CSV export', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $alice = User::factory()->create(['name' => 'Alice', 'email' => 'alice@example.com']);
+    $bob = User::factory()->create(['name' => 'Bob', 'email' => 'bob@example.com']);
+    LeaveRequest::factory()->for($alice)->create(['start_date' => '2026-06-15', 'end_date' => '2026-06-15']);
+    LeaveRequest::factory()->for($bob)->create(['start_date' => '2026-06-25', 'end_date' => '2026-06-25']);
+
+    $response = Livewire::test(ListLeaveRequests::class)
+        ->filterTable('date_between', ['from' => '2026-06-10', 'until' => '2026-06-20'])
+        ->instance()
+        ->exportCsv();
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($csv)->toContain('Alice')
+        ->and($csv)->not->toContain('Bob'); // outside the date range
+});
+
+it('applies the employee filter to the CSV export', function () {
+    $this->actingAs(userWithRole('hr'));
+
+    $alice = User::factory()->create(['name' => 'Alice', 'email' => 'alice@example.com', 'status' => 'active']);
+    $bob = User::factory()->create(['name' => 'Bob', 'email' => 'bob@example.com', 'status' => 'active']);
+    LeaveRequest::factory()->for($alice)->create();
+    LeaveRequest::factory()->for($bob)->create();
+
+    $response = Livewire::test(ListLeaveRequests::class)
+        ->filterTable('user', $alice->id)
+        ->instance()
+        ->exportCsv();
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($csv)->toContain('Alice')
+        ->and($csv)->not->toContain('Bob'); // filtered out by employee
+});
+
 it('renders the leave request edit page', function () {
     $this->actingAs(userWithRole('hr'));
     $leave = LeaveRequest::factory()->create();
