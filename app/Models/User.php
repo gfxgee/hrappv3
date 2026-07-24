@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
+use Lab404\Impersonate\Models\Impersonate;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -37,7 +38,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, SoftDeletes, TracksActivity, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, Impersonate, Notifiable, PasskeyAuthenticatable, SoftDeletes, TracksActivity, TwoFactorAuthenticatable;
 
     /**
      * Roles with HR/admin-level access across the app.
@@ -275,6 +276,36 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     public function isSuperAdmin(): bool
     {
         return $this->hasAnyRole(['superadmin', 'super_admin']);
+    }
+
+    /**
+     * Whether this user is allowed to impersonate other users at all.
+     * Only HR/admin-level roles may impersonate.
+     */
+    public function canImpersonate(): bool
+    {
+        return $this->isManager();
+    }
+
+    /**
+     * Whether this user may be impersonated by the currently authenticated
+     * user. Super-admins can never be impersonated (privilege-escalation
+     * guard), and non-super-admin managers (e.g. HR) may only impersonate
+     * regular employees, not other managers.
+     */
+    public function canBeImpersonated(): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return false;
+        }
+
+        $impersonator = auth()->user();
+
+        if ($impersonator instanceof self && ! $impersonator->isSuperAdmin() && $this->isManager()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

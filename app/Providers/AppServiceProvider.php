@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Lab404\Impersonate\Events\LeaveImpersonation;
+use Lab404\Impersonate\Events\TakeImpersonation;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Microsoft\Provider as MicrosoftProvider;
 use Spatie\Browsershot\Browsershot;
@@ -42,6 +44,39 @@ class AppServiceProvider extends ServiceProvider
         $this->configureSocialite();
         $this->configurePdf();
         $this->configureActivityLog();
+        $this->configureImpersonation();
+    }
+
+    /**
+     * Keep impersonation working alongside Filament's AuthenticateSession
+     * middleware, which logs a user out when the session's stored password
+     * hash no longer matches the authenticated user. When impersonation starts
+     * or ends the authenticated user changes, so realign the stored hash to the
+     * now-current user. Also record start/stop in the activity log.
+     */
+    protected function configureImpersonation(): void
+    {
+        $passwordHashKey = 'password_hash_'.config('auth.defaults.guard');
+
+        Event::listen(function (TakeImpersonation $event) use ($passwordHashKey): void {
+            session()->put($passwordHashKey, $event->impersonated->getAuthPassword());
+
+            activity('auth')
+                ->causedBy($event->impersonator)
+                ->performedOn($event->impersonated)
+                ->event('impersonate')
+                ->log('Started impersonating');
+        });
+
+        Event::listen(function (LeaveImpersonation $event) use ($passwordHashKey): void {
+            session()->put($passwordHashKey, $event->impersonator->getAuthPassword());
+
+            activity('auth')
+                ->causedBy($event->impersonator)
+                ->performedOn($event->impersonated)
+                ->event('leave_impersonation')
+                ->log('Stopped impersonating');
+        });
     }
 
     /**

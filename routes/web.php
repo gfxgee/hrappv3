@@ -38,5 +38,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', fn () => redirect('/admin'))->name('dashboard');
 });
 
+// User impersonation (lab404/laravel-impersonate). Registers the
+// impersonate.take / impersonate.leave routes. Authorization is enforced in the
+// package controller via User::canImpersonate() / canBeImpersonated(); the
+// admin-panel action gates visibility. Auth (not verified) so an impersonated
+// user can always leave.
+Route::middleware('auth')->group(function () {
+    Route::impersonate();
+});
+
 require __DIR__.'/mobile.php';
 require __DIR__.'/settings.php';

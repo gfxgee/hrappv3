@@ -116,6 +116,10 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::PAGE_START,
                 fn (): View => view('filament.announcements.banners'),
             )
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): View => view('filament.impersonate-banner'),
+            )
             ->spa(hasPrefetching: true)
             // The Org Chart loads a JS charting library via @vite, which does
             // not re-execute on SPA (wire:navigate) transitions. Exclude it so
