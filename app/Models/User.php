@@ -280,32 +280,20 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
 
     /**
      * Whether this user is allowed to impersonate other users at all.
-     * Only HR/admin-level roles may impersonate.
+     * Only super-admins may impersonate.
      */
     public function canImpersonate(): bool
     {
-        return $this->isManager();
+        return $this->isSuperAdmin();
     }
 
     /**
-     * Whether this user may be impersonated by the currently authenticated
-     * user. Super-admins can never be impersonated (privilege-escalation
-     * guard), and non-super-admin managers (e.g. HR) may only impersonate
-     * regular employees, not other managers.
+     * Whether this user may be impersonated. Super-admins can never be
+     * impersonated (privilege-escalation guard); everyone else may be.
      */
     public function canBeImpersonated(): bool
     {
-        if ($this->isSuperAdmin()) {
-            return false;
-        }
-
-        $impersonator = auth()->user();
-
-        if ($impersonator instanceof self && ! $impersonator->isSuperAdmin() && $this->isManager()) {
-            return false;
-        }
-
-        return true;
+        return ! $this->isSuperAdmin();
     }
 
     /**

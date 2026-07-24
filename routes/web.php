@@ -39,10 +39,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // User impersonation (lab404/laravel-impersonate). Registers the
-// impersonate.take / impersonate.leave routes. Authorization is enforced in the
-// package controller via User::canImpersonate() / canBeImpersonated(); the
-// admin-panel action gates visibility. Auth (not verified) so an impersonated
-// user can always leave.
+// impersonate.take / impersonate.leave routes. Restricted to super-admins:
+// authorization is enforced in the package controller via User::canImpersonate()
+// / canBeImpersonated(); the admin-panel action gates visibility. Auth (not
+// verified) so an impersonated user can always leave.
 Route::middleware('auth')->group(function () {
     Route::impersonate();
 });

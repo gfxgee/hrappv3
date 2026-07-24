@@ -27,15 +27,15 @@ it('lets a super admin impersonate a regular employee', function () {
         ->and(session('password_hash_web'))->toBe($employee->getAuthPassword());
 });
 
-it('lets HR impersonate a regular employee', function () {
+it('forbids HR from impersonating (super admins only)', function () {
     $hr = userWithImpersonationRole('hr');
     $employee = User::factory()->create(['status' => 'active']);
 
     $this->actingAs($hr)
         ->get(route('impersonate', $employee))
-        ->assertRedirect('/admin');
+        ->assertForbidden();
 
-    expect(session('impersonated_by'))->toBe($hr->id);
+    expect(session()->has('impersonated_by'))->toBeFalse();
 });
 
 it('restores the original user when leaving impersonation', function () {
@@ -62,20 +62,11 @@ it('forbids a regular employee from impersonating anyone', function () {
     expect(session()->has('impersonated_by'))->toBeFalse();
 });
 
-it('does not let HR impersonate a super admin', function () {
-    $hr = userWithImpersonationRole('hr');
+it('does not let a super admin impersonate another super admin', function () {
     $admin = userWithImpersonationRole('superadmin');
+    $otherAdmin = userWithImpersonationRole('superadmin');
 
-    $this->actingAs($hr)->get(route('impersonate', $admin));
-
-    expect(session()->has('impersonated_by'))->toBeFalse();
-});
-
-it('does not let HR impersonate another manager', function () {
-    $hr = userWithImpersonationRole('hr');
-    $otherHr = userWithImpersonationRole('hr');
-
-    $this->actingAs($hr)->get(route('impersonate', $otherHr));
+    $this->actingAs($admin)->get(route('impersonate', $otherAdmin));
 
     expect(session()->has('impersonated_by'))->toBeFalse();
 });

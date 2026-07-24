@@ -91,8 +91,9 @@ class UsersTable
                     ->requiresConfirmation()
                     ->modalHeading(fn (User $record): string => "Impersonate {$record->name}?")
                     ->modalDescription('You will browse the app as this user until you choose to stop.')
-                    // Authorization is enforced server-side by the package controller
-                    // (User::canImpersonate / canBeImpersonated); this only gates the button.
+                    // Super-admins only. Authorization is enforced server-side by the
+                    // package controller (User::canImpersonate / canBeImpersonated);
+                    // this only gates the button's visibility.
                     ->visible(fn (User $record): bool => auth()->user() instanceof User
                         && auth()->user()->canImpersonate()
                         && ! $record->is(auth()->user())
