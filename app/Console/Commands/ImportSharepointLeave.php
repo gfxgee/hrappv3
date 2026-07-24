@@ -3,26 +3,38 @@
 namespace App\Console\Commands;
 
 use App\Enum\AttendanceStatus;
-use App\Models\OverTimeRequest;
+use App\Enum\LeaveType;
+use App\Models\LeaveRequest;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Throwable;
 
 /**
- * One-off importer for the legacy SharePoint "Overtime" list exported as CSV.
+ * One-off importer for the legacy SharePoint "Timeoff" list exported as CSV.
  *
- * Rows are matched to users by the "Title" column (the employee's email) and
- * upserted on the SharePoint list item id, so the command is safe to re-run.
- * Rows whose employee email has no matching user are skipped and logged.
+ * Rows are matched to users by the "Email" column and upserted on the SharePoint
+ * list item id, so the command is safe to re-run. Rows whose employee email has
+ * no matching user are skipped and logged. Each record is a single-day leave, so
+ * the list's single "Date" column fills both start_date and end_date.
  */
-class ImportSharepointOvertime extends Command
+class ImportSharepointLeave extends Command
 {
-    protected $signature = 'overtime:import-sharepoint
-                            {path : Absolute path to the exported Overtime.csv}
+    protected $signature = 'leave:import-sharepoint
+                            {path : Absolute path to the exported Timeoff.csv}
                             {--dry-run : Parse and report without writing to the database}';
 
-    protected $description = 'Import the legacy SharePoint Overtime list (CSV) into over_time_requests';
+    protected $description = 'Import the legacy SharePoint Timeoff list (CSV) into leave_requests';
+
+    /**
+     * SharePoint "Title" leave label => LeaveType. Matched case-insensitively.
+     * "DF Sportsfest" is not a real leave type, so it is imported as vacation.
+     *
+     * @var array<string, LeaveType>
+     */
+    private array $typeOverrides = [
+        'df sportsfest' => LeaveType::VACATION,
+    ];
 
     public function handle(): int
     {
@@ -60,6 +72,13 @@ class ImportSharepointOvertime extends Command
             return $userIdCache[$email];
         };
 
+        // Build a plain-label => LeaveType map from the enum, plus the overrides.
+        $typeMap = $this->typeOverrides;
+
+        foreach (LeaveType::all() as $type) {
+            $typeMap[strtolower($type->plainLabel())] = $type;
+        }
+
         $header = fgetcsv($handle);
 
         if ($header === false) {
@@ -96,7 +115,7 @@ class ImportSharepointOvertime extends Command
             }
 
             $sharepointId = trim((string) ($row['ID'] ?? ''));
-            $email = strtolower(trim((string) ($row['Title'] ?? '')));
+            $email = strtolower(trim((string) ($row['Email'] ?? '')));
 
             $userId = $resolve($email);
 
@@ -107,35 +126,42 @@ class ImportSharepointOvertime extends Command
                 continue;
             }
 
+            $requestType = $typeMap[strtolower(trim((string) ($row['Title'] ?? '')))] ?? null;
+
+            if ($requestType === null) {
+                $this->warn("Row {$rowNumber} (SP #{$sharepointId}): unknown leave type \"{$row['Title']}\", skipped.");
+                $skipped++;
+
+                continue;
+            }
+
             try {
+                $date = $this->parseDate($row['Date'] ?? null);
                 $sharepointCreated = $this->parseDate($row['Created'] ?? null);
-                $sharepointModified = $this->parseDate($row['Modified'] ?? null);
 
                 $attributes = [
                     'user_id' => $userId,
                     'manager_id' => $resolve($row['Manager'] ?? null),
                     'approved_by' => $resolve($row['ApprovedBy'] ?? null),
-                    'request_date' => $this->parseDate($row['Date'] ?? null),
-                    'hours' => (float) ($row['Hours'] ?? 0),
+                    'request_type' => $requestType,
+                    // Single-day leave: the one Date fills both ends of the range.
+                    'start_date' => $date,
+                    'end_date' => $date,
+                    'start_time' => $this->cleanTime($row['TimeStart'] ?? null),
+                    'end_time' => $this->cleanTime($row['TimeEnd'] ?? null),
                     'reason' => $this->decode($row['Reason'] ?? ''),
                     'status' => $this->mapStatus($row['OverallStatus'] ?? null) ?? AttendanceStatus::FOR_APPROVAL,
                     'manager_status' => $this->mapStatus($row['Status'] ?? null)?->value,
+                    'hr_approved' => $this->parseBool($row['HR'] ?? null),
                     'remarks' => $this->decode($row['Remarks'] ?? ''),
-                    'attachments_count' => (int) ($row['Attachments'] ?? 0),
                     'sharepoint_created_at' => $sharepointCreated,
-                    'sharepoint_modified_at' => $sharepointModified,
                 ];
 
                 // The "Filed" date shown in the app is created_at, so stamp the
-                // Eloquent timestamps from SharePoint rather than the import time.
-                // Explicitly setting them marks the attributes dirty, so Eloquent
-                // won't overwrite them with "now" on insert.
+                // Eloquent timestamp from SharePoint rather than the import time.
                 if ($sharepointCreated !== null) {
                     $attributes['created_at'] = $sharepointCreated;
-                }
-
-                if ($sharepointModified !== null) {
-                    $attributes['updated_at'] = $sharepointModified;
+                    $attributes['updated_at'] = $sharepointCreated;
                 }
             } catch (Throwable $e) {
                 $this->warn("Row {$rowNumber} (SP #{$sharepointId}): {$e->getMessage()}, skipped.");
@@ -145,8 +171,8 @@ class ImportSharepointOvertime extends Command
             }
 
             if (! $dryRun) {
-                OverTimeRequest::withoutEvents(function () use ($sharepointId, $attributes) {
-                    OverTimeRequest::updateOrCreate(
+                LeaveRequest::withoutEvents(function () use ($sharepointId, $attributes) {
+                    LeaveRequest::updateOrCreate(
                         ['sharepoint_id' => (int) $sharepointId],
                         $attributes,
                     );
@@ -176,8 +202,19 @@ class ImportSharepointOvertime extends Command
     }
 
     /**
-     * Parse a SharePoint date/datetime (US format, e.g. "8/02/2023" or
-     * "8/30/2023 3:05 AM"). Returns null for blanks.
+     * Normalise a SharePoint time cell ("10:00") to a plain "H:i" string, or
+     * null when blank.
+     */
+    private function cleanTime(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * Parse a SharePoint date/datetime (US format, e.g. "7/24/2026" or
+     * "7/23/2026 7:02 PM"). Returns null for blanks.
      */
     private function parseDate(?string $value): ?CarbonImmutable
     {
@@ -187,8 +224,8 @@ class ImportSharepointOvertime extends Command
             return null;
         }
 
-        // Try the datetime form first ("8/30/2023 3:05 AM"), then the date-only
-        // form ("8/02/2023"). createFromFormat throws on mismatch, so guard each.
+        // Try the datetime form first ("7/23/2026 7:02 PM"), then date-only.
+        // createFromFormat throws on mismatch, so guard each.
         foreach (['n/j/Y g:i A', 'n/j/Y'] as $format) {
             try {
                 return CarbonImmutable::createFromFormat($format, $value)->startOfMinute();
@@ -198,6 +235,15 @@ class ImportSharepointOvertime extends Command
         }
 
         return CarbonImmutable::parse($value);
+    }
+
+    /**
+     * Interpret the SharePoint "HR" flag. Only an explicit "true" counts as
+     * approved; "false", blanks, and stray values map to false.
+     */
+    private function parseBool(?string $value): bool
+    {
+        return strtolower(trim((string) $value)) === 'true';
     }
 
     /**

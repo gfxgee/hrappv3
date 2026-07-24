@@ -106,6 +106,9 @@ class LeaveCreditService
 
     /**
      * Remaining credit (days) for a leave type, or null when untracked/unlimited.
+     *
+     * Quotas are an annual allotment, so only usage from the current calendar
+     * year counts against the balance.
      */
     public function remainingDays(User $user, LeaveType $type, ?int $excludeId = null): ?float
     {
@@ -115,6 +118,6 @@ class LeaveCreditService
             return null;
         }
 
-        return max($total - $this->usedDays($user, $type, $excludeId), 0);
+        return max($total - $this->usedDays($user, $type, $excludeId, now()->year), 0);
     }
 }

@@ -46,7 +46,10 @@ it('imports matched rows, resolving emails to user ids and decoding entities', f
         ->and($record->status)->toBe(AttendanceStatus::APPROVED)
         ->and($record->request_date->toDateString())->toBe('2023-07-29')
         // Not cast on the model, so it comes back as a raw datetime string.
-        ->and($record->sharepoint_created_at)->toBe('2023-07-28 12:23:00');
+        ->and($record->sharepoint_created_at)->toBe('2023-07-28 12:23:00')
+        // "Filed" (created_at) must reflect the SharePoint Created date, not today.
+        ->and($record->created_at->format('Y-m-d H:i'))->toBe('2023-07-28 12:23')
+        ->and($record->updated_at->format('Y-m-d H:i'))->toBe('2023-08-30 03:05');
 
     @unlink($path);
 });

@@ -10,8 +10,10 @@ use App\Models\Department;
 use App\Models\Holiday;
 use App\Models\LeaveRequest;
 use App\Models\User;
+use App\Services\LeaveCreditService;
 use App\Settings\GeneralSettings;
 use Filament\Facades\Filament;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 
@@ -636,6 +638,43 @@ it('computes leave credits with usage, excluding rejected leaves', function () {
     expect($credits[LeaveType::VACATION->label()]['total'])->toBe(10.0)
         ->and($credits[LeaveType::VACATION->label()]['used'])->toBe(1.0)
         ->and($credits[LeaveType::VACATION->label()]['remaining'])->toBe(9.0);
+});
+
+it('counts only the current calendar year against annual credits', function () {
+    $user = User::factory()->create();
+    $user->userData()->create([
+        'vacation_leave' => 10,
+        'time_in' => '10:00',
+        'time_out' => '18:00',
+    ]);
+
+    // Prior-year usage (e.g. imported history) must not eat into this year's quota.
+    LeaveRequest::factory()->for($user)->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => now()->subYear()->toDateString(),
+        'end_date' => now()->subYear()->toDateString(),
+    ]);
+
+    // A current-year leave on a weekday counts as usual.
+    $thisYearWeekday = now()->startOfYear()->next(Carbon::MONDAY);
+    LeaveRequest::factory()->for($user)->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => $thisYearWeekday->toDateString(),
+        'end_date' => $thisYearWeekday->toDateString(),
+    ]);
+
+    $this->actingAs($user);
+
+    $service = app(LeaveCreditService::class);
+    $credits = collect((new FileLeaveRequest)->getLeaveCredits())->keyBy('label');
+
+    // Only the current-year day is counted; last year's is ignored.
+    expect($credits[LeaveType::VACATION->label()]['used'])->toBe(1.0)
+        ->and($credits[LeaveType::VACATION->label()]['remaining'])->toBe(9.0)
+        ->and($service->usedDays($user, LeaveType::VACATION, null, now()->subYear()->year))->toBe(1.0)
+        ->and($service->remainingDays($user, LeaveType::VACATION))->toBe(9.0);
 });
 
 it('excludes holidays when computing used credit', function () {

@@ -239,9 +239,11 @@ class FileLeaveRequest extends Page implements HasTable
 
         // Sum the actual working-day duration of each active request, per type,
         // so weekends/holidays are free, a 1-hour leave costs a fraction, etc.
+        // Quotas are an annual allotment, so only count the current year's usage.
         $used = LeaveRequest::query()
             ->where('user_id', $user->id)
             ->whereNotIn('status', [AttendanceStatus::REJECTED->value, AttendanceStatus::CANCELLED->value])
+            ->whereYear('start_date', now()->year)
             ->get(['request_type', 'start_date', 'end_date', 'start_time', 'end_time'])
             ->groupBy(fn (LeaveRequest $request): string => $request->request_type->value)
             ->map(fn ($group): float => $group->sum(
