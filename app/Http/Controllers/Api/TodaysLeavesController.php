@@ -6,12 +6,14 @@ use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
 use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
+use App\Support\TimeOptions;
 use Illuminate\Http\JsonResponse;
 
 class TodaysLeavesController extends Controller
 {
     /**
-     * Return everyone on leave today as JSON, exposing only their name and reason.
+     * Return everyone on leave today as JSON, with their name, reason, and the
+     * time span of the leave (start/end time and its duration in hours).
      */
     public function __invoke(): JsonResponse
     {
@@ -29,6 +31,9 @@ class TodaysLeavesController extends Controller
             ->map(fn (LeaveRequest $leave): array => [
                 'name' => $leave->user?->name,
                 'reason' => $leave->reason,
+                'start_time' => $leave->start_time,
+                'end_time' => $leave->end_time,
+                'duration_hours' => TimeOptions::durationHours($leave->start_time, $leave->end_time),
             ])
             ->values();
 
