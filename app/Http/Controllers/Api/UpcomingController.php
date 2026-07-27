@@ -12,6 +12,7 @@ use App\Services\CelebrationService;
 use App\Settings\GeneralSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * Read-only JSON feeds of upcoming events — leaves, birthdays, and holidays —
@@ -83,6 +84,45 @@ class UpcomingController extends Controller
             ->values();
 
         return response()->json($birthdays);
+    }
+
+    /**
+     * Active employees whose work anniversary falls within the window, soonest
+     * first. Employees hired this year have no anniversary yet and are omitted.
+     */
+    public function anniversaries(Request $request): JsonResponse
+    {
+        $windowDays = $this->windowDays($request);
+
+        $anniversaries = User::query()
+            ->active()
+            ->get(['id', 'name', 'date_hired'])
+            ->map(function (User $user): ?array {
+                $next = CelebrationService::nextAnnualOccurrence($user->date_hired);
+
+                if ($next === null) {
+                    return null;
+                }
+
+                $years = $next->year - Carbon::parse($user->date_hired)->year;
+
+                if ($years < 1) {
+                    return null; // hired this year — no anniversary yet
+                }
+
+                return [
+                    'name' => $user->name,
+                    'years' => $years,
+                    'date' => $next->toDateString(),
+                    'days_until' => (int) today()->diffInDays($next),
+                ];
+            })
+            ->filter()
+            ->filter(fn (array $entry): bool => $entry['days_until'] <= $windowDays)
+            ->sortBy('days_until')
+            ->values();
+
+        return response()->json($anniversaries);
     }
 
     /**

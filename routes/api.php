@@ -34,4 +34,5 @@ Route::get('on-call/today', [OnCallController::class, 'today'])
 // Upcoming events within a look-ahead window (?days= overrides the default).
 Route::get('upcoming/leaves', [UpcomingController::class, 'leaves'])->name('api.upcoming.leaves');
 Route::get('upcoming/birthdays', [UpcomingController::class, 'birthdays'])->name('api.upcoming.birthdays');
+Route::get('upcoming/anniversaries', [UpcomingController::class, 'anniversaries'])->name('api.upcoming.anniversaries');
 Route::get('upcoming/holidays', [UpcomingController::class, 'holidays'])->name('api.upcoming.holidays');

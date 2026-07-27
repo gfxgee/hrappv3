@@ -135,10 +135,40 @@ cancelled, and rejected.
 `type` / `type_value` use the same mapping as `/leaves/today` above.
 
 ### `GET /api/upcoming/birthdays`
-`name`, `date`, `days_until`.
+Active employees whose birthday falls within the window, soonest first.
+
+```json
+[
+  { "name": "Jane Doe", "date": "2026-08-01", "days_until": 5 }
+]
+```
+
+### `GET /api/upcoming/anniversaries`
+Active employees whose **work anniversary** falls within the window, soonest
+first. Employees hired this year are omitted (no anniversary yet), as are those
+with no hire date.
+
+```json
+[
+  { "name": "Jane Doe", "years": 6, "date": "2026-08-01", "days_until": 5 }
+]
+```
+`years` is the anniversary being reached (e.g. `6` = their 6th year).
 
 ### `GET /api/upcoming/holidays`
-`name`, `emoji`, `date`, `duration`, `days_until`.
+Active holidays within the window, soonest first.
+
+```json
+[
+  {
+    "name": "Independence Day",
+    "emoji": "🎉",
+    "date": "2026-08-01",
+    "duration": "Full day",
+    "days_until": 5
+  }
+]
+```
 
 ## Outbound Teams events
 

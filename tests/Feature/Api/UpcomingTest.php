@@ -74,6 +74,33 @@ describe('upcoming birthdays', function () {
     });
 });
 
+describe('upcoming anniversaries', function () {
+    it('lists active employees with a work anniversary within the window', function () {
+        User::factory()->create(['name' => 'Anniv Soon', 'date_hired' => today()->addDays(5)->format('2020-m-d')]);
+        User::factory()->create(['name' => 'Anniv Far', 'date_hired' => today()->addDays(90)->format('2020-m-d')]);
+        User::factory()->create(['name' => 'No Hire Date', 'date_hired' => null]);
+
+        $response = $this->getJson(route('api.upcoming.anniversaries', ['days' => 30]))
+            ->assertOk()
+            ->assertJsonCount(1);
+
+        expect($response->json('0.name'))->toBe('Anniv Soon')
+            ->and($response->json('0.days_until'))->toBe(5)
+            ->and($response->json('0.years'))->toBe(today()->year - 2020);
+    });
+
+    it('excludes employees hired this year', function () {
+        User::factory()->create([
+            'name' => 'Hired This Year',
+            'date_hired' => today()->addDays(3)->format('Y-m-d'),
+        ]);
+
+        $this->getJson(route('api.upcoming.anniversaries', ['days' => 30]))
+            ->assertOk()
+            ->assertExactJson([]);
+    });
+});
+
 describe('upcoming holidays', function () {
     it('lists active holidays within the window, soonest first', function () {
         Holiday::factory()->create(['name' => 'Far Holiday', 'date' => today()->addDays(20)]);
