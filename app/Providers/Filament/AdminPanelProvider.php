@@ -124,9 +124,16 @@ class AdminPanelProvider extends PanelProvider
             // The Org Chart loads a JS charting library via @vite, which does
             // not re-execute on SPA (wire:navigate) transitions. Exclude it so
             // it always does a full page load and the chart renders reliably.
+            //
+            // The mobile app (/m/*) is a separate Inertia (React) app, not a
+            // Livewire page — SPA (wire:navigate) can't boot it, so the
+            // post-login redirect to /m/home would hang on phones. Force a full
+            // page load for the whole mobile surface.
             ->spaUrlExceptions([
                 '*/org-chart',
                 '*/org-chart?*',
+                '*/m',
+                '*/m/*',
             ]);
     }
 }
