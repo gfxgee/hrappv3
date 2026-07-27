@@ -16,6 +16,13 @@ export type LeaveBalance = {
     tracked: boolean;
 };
 
+export type OnCallNotice = {
+    /** 'owner' = on-call all week, 'substitute' = covering today only. */
+    type: 'owner' | 'substitute';
+    range: string;
+    covering_for: string | null;
+};
+
 export type RecentLeave = {
     id: number;
     label: string;

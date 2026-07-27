@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\LeaveRequest;
 use App\Services\LeaveCreditService;
 use App\Services\MobilePunchService;
+use App\Services\OnCallService;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -16,6 +18,7 @@ class HomeController extends Controller
     public function __construct(
         private readonly MobilePunchService $punch,
         private readonly LeaveCreditService $credits,
+        private readonly OnCallService $onCall,
     ) {}
 
     public function index(Request $request): Response
@@ -28,7 +31,31 @@ class HomeController extends Controller
             'clock' => $this->punch->snapshot($user),
             'balances' => $this->balances($user),
             'recent' => $this->recentLeaves($user),
+            'onCall' => $this->onCallNotice($user),
         ]);
+    }
+
+    /**
+     * On-call notice for this employee, based on today's effective on-call:
+     * the week's owner, or a stand-in covering today. Null when it isn't them.
+     *
+     * @return array{type: string, range: string, covering_for: string|null}|null
+     */
+    private function onCallNotice($user): ?array
+    {
+        $effective = $this->onCall->onCallForDate(today());
+
+        if ($effective === null || ! $effective['user']->is($user)) {
+            return null;
+        }
+
+        $weekStart = $this->onCall->weekStart(today());
+
+        return [
+            'type' => $effective['is_substitute'] ? 'substitute' : 'owner',
+            'range' => $weekStart->format('M j').' – '.$weekStart->endOfWeek(CarbonInterface::SUNDAY)->format('M j'),
+            'covering_for' => $effective['is_substitute'] ? $effective['primary']?->name : null,
+        ];
     }
 
     /**

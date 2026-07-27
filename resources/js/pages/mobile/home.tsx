@@ -6,7 +6,12 @@ import { LeaveSheet } from '@/components/mobile/leave-sheet';
 import { OvertimeSheet } from '@/components/mobile/overtime-sheet';
 import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
-import type { ClockSnapshot, LeaveBalance, RecentLeave } from '@/types/mobile';
+import type {
+    ClockSnapshot,
+    LeaveBalance,
+    OnCallNotice,
+    RecentLeave,
+} from '@/types/mobile';
 
 type Props = {
     greeting: string;
@@ -14,6 +19,7 @@ type Props = {
     clock: ClockSnapshot;
     balances: LeaveBalance[];
     recent: RecentLeave[];
+    onCall: OnCallNotice | null;
 };
 
 function statusPill(status: string): string {
@@ -72,6 +78,7 @@ export default function MobileHome({
     clock,
     balances,
     recent,
+    onCall,
 }: Props) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const user = auth.user;
@@ -149,6 +156,24 @@ export default function MobileHome({
                         </Form>
                     )}
                 </section>
+
+                {onCall && (
+                    <section className="mt-4 flex items-center gap-3 rounded-2xl bg-yellow-50 p-4 ring-1 ring-yellow-400/40">
+                        <span className="text-xl">📞</span>
+                        <div className="min-w-0">
+                            <p className="text-sm font-bold text-yellow-950">
+                                {onCall.type === 'substitute'
+                                    ? "You're covering on-call today"
+                                    : "You're on-call this week"}
+                            </p>
+                            <p className="mt-0.5 text-xs text-yellow-800">
+                                {onCall.type === 'substitute'
+                                    ? `Standing in for ${onCall.covering_for ?? 'the on-call dev'}, who's on leave.`
+                                    : `${onCall.range} — you're the go-to for urgent issues.`}
+                            </p>
+                        </div>
+                    </section>
+                )}
 
                 <h2 className="mt-6 mb-2.5 ml-1.5 text-[11px] font-bold tracking-widest text-gray-800 uppercase">
                     Your leave balance
