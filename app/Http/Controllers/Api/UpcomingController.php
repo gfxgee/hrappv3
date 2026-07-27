@@ -43,6 +43,7 @@ class UpcomingController extends Controller
             ->map(fn (LeaveRequest $leave): array => [
                 'name' => $leave->user?->name,
                 'type' => $leave->request_type?->plainLabel(),
+                'type_value' => $leave->request_type?->value,
                 'reason' => $leave->reason,
                 'start_date' => $leave->start_date?->toDateString(),
                 'end_date' => $leave->end_date?->toDateString(),

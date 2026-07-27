@@ -35,6 +35,7 @@ describe('upcoming leaves', function () {
         expect($response->json('0.name'))->toBe('Soon Later')
             ->and($response->json('0.days_until'))->toBe(3)
             ->and($response->json('0.type'))->toBe('Sick Leave')
+            ->and($response->json('0.type_value'))->toBe('sick')
             ->and($response->json('1.name'))->toBe('Way Later');
     });
 

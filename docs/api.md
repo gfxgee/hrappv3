@@ -112,11 +112,33 @@ Response:
 
 ## Related feeds
 
-- `GET /api/upcoming/leaves` — upcoming leaves within a window.
-- `GET /api/upcoming/birthdays` — upcoming birthdays.
-- `GET /api/upcoming/holidays` — upcoming holidays.
+Each accepts `?days=1..365` to override the default look-ahead window (the
+app's "Coming up" setting).
 
-Each accepts `?days=1..365` to override the default look-ahead window.
+### `GET /api/upcoming/leaves`
+Leaves **starting after today**, within the window, soonest first. Excludes WFH,
+cancelled, and rejected.
+
+```json
+[
+  {
+    "name": "Jane Doe",
+    "type": "Sick Leave",
+    "type_value": "sick",
+    "reason": "Checkup",
+    "start_date": "2026-07-30",
+    "end_date": "2026-07-31",
+    "days_until": 3
+  }
+]
+```
+`type` / `type_value` use the same mapping as `/leaves/today` above.
+
+### `GET /api/upcoming/birthdays`
+`name`, `date`, `days_until`.
+
+### `GET /api/upcoming/holidays`
+`name`, `emoji`, `date`, `duration`, `days_until`.
 
 ## Outbound Teams events
 
