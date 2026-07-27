@@ -23,6 +23,8 @@ it('returns name, reason, and time duration of everyone on leave today', functio
         ->assertExactJson([
             [
                 'name' => 'Jane Doe',
+                'type' => 'Vacation Leave',
+                'type_value' => 'vacation',
                 'reason' => 'Family trip',
                 'start_time' => '09:00',
                 'end_time' => '13:00',

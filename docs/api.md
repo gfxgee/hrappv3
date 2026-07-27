@@ -24,6 +24,8 @@ Response — array of:
 [
   {
     "name": "Jane Doe",
+    "type": "Vacation Leave",
+    "type_value": "vacation",
     "reason": "Family trip",
     "start_time": "09:00",
     "end_time": "13:00",
@@ -31,20 +33,46 @@ Response — array of:
   }
 ]
 ```
+`type` is the human-readable label; `type_value` is the stable enum key —
+**branch on `type_value`**, since labels may be reworded.
+
+| `type_value` | `type` |
+| --- | --- |
+| `wfh` | Work from Home |
+| `vacation` | Vacation Leave |
+| `sick` | Sick Leave |
+| `emergency` | Emergency Leave |
+| `bereavement` | Bereavement Leave |
+| `maternity` | Maternity Leave |
+| `paternity` | Paternity Leave |
+| `lwop` | Leave Without Pay |
+
 `start_time` / `end_time` / `duration_hours` are `null` when the leave has no
 times. Cancelled and rejected leaves are excluded. Empty array when nobody is on
 leave.
 
 ### `GET /api/leaves/wfh`
 Everyone **working from home** on the date. Same query param and response shape
-as `/leaves/today`.
+as `/leaves/today`, minus `type` / `type_value` — every entry is Work from Home.
 
 ---
 
 ## On-call ("late dev")
 
-A weekly rotation. Each week has an **owner**; on any day the owner is on leave,
-the next available developer **stands in** for that day.
+A weekly rotation over an ordered roster of developers (managed in the admin
+under **HR Management → On-Call Rotation**).
+
+- Each week has an **owner** — the available roster member who was on-call least
+  recently, tie-broken by roster order. This gives a plain `1-2-3-4` rotation.
+- If the owner would be out the **whole** week, they're skipped and take the
+  **next** week instead (so `1-2-3-4` becomes `1-3-2-4`).
+- On a day the owner is out for a **full day**, the next available developer
+  **stands in** for that day only. Standing in doesn't consume their own turn.
+
+**What counts as unavailable:** only a full-day absence — a multi-day leave, a
+leave with no times, or a timed leave covering a whole working day. A
+**partial-day** leave (e.g. 10:00–13:00) keeps the person on-call, and **WFH
+never** makes someone unavailable.
 
 ### `GET /api/on-call/current`
 The **week's owner** for the week containing the date.
@@ -92,8 +120,15 @@ Each accepts `?days=1..365` to override the default look-ahead window.
 
 ## Outbound Teams events
 
-The app also **pushes** to the Power Automate flow (`services.teams.flow_url`)
-for on-call, keyed by an `event` field:
+The app also **pushes** to the Power Automate flow (`services.teams.flow_url`).
+Every payload carries an `event` key to branch on, plus a ready-made `text`
+summary. Null fields are stripped before sending.
 
-- `on_call.assigned` — the week's owner, sent Monday.
-- `on_call.standin` — a stand-in covering today (sent the morning the owner is out).
+| `event` | When | Extra fields |
+| --- | --- | --- |
+| `on_call.assigned` | Monday 00:05, when the week's owner is set | `start_date`, `end_date` |
+| `on_call.standin` | Daily 07:30, only if the owner is out that day | `covering_for`, `request_date` |
+
+Both also include `category` (`On-Call`), `icon`, `employee`, `email`, `photo`,
+and `department`. Existing leave/overtime events (`leave.filed`,
+`overtime.filed`, …) are unchanged.

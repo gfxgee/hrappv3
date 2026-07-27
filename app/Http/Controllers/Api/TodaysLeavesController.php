@@ -16,8 +16,9 @@ class TodaysLeavesController extends Controller
 {
     /**
      * Return everyone on leave on the target date as JSON, with their name,
-     * reason, and the time span of the leave (start/end time and its duration
-     * in hours). The date defaults to today and can be overridden with
+     * leave type (display label plus the raw enum value), reason, and the time
+     * span of the leave (start/end time and its duration in hours). The date
+     * defaults to today and can be overridden with
      * `?date=YYYY-MM-DD` (handy for testing the payload on a known-populated
      * date, e.g. when today is a weekend with no leaves).
      */
@@ -38,6 +39,8 @@ class TodaysLeavesController extends Controller
             ->get()
             ->map(fn (LeaveRequest $leave): array => [
                 'name' => $leave->user?->name,
+                'type' => $leave->request_type?->plainLabel(),
+                'type_value' => $leave->request_type?->value,
                 'reason' => $leave->reason,
                 'start_time' => $leave->start_time,
                 'end_time' => $leave->end_time,
