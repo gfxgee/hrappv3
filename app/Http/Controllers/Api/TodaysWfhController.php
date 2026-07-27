@@ -12,22 +12,20 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
 
-class TodaysLeavesController extends Controller
+class TodaysWfhController extends Controller
 {
     /**
-     * Return everyone on leave on the target date as JSON, with their name,
-     * reason, and the time span of the leave (start/end time and its duration
-     * in hours). The date defaults to today and can be overridden with
-     * `?date=YYYY-MM-DD` (handy for testing the payload on a known-populated
-     * date, e.g. when today is a weekend with no leaves).
+     * Return everyone working from home on the target date as JSON, mirroring
+     * the shape of the "on leave today" feed. The date defaults to today and
+     * can be overridden with `?date=YYYY-MM-DD`.
      */
     public function __invoke(Request $request): JsonResponse
     {
         $date = $this->resolveDate($request);
 
-        $leaves = LeaveRequest::query()
+        $wfh = LeaveRequest::query()
             ->with('user:id,name')
-            ->where('request_type', '!=', LeaveType::WFH->value)
+            ->where('request_type', LeaveType::WFH->value)
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
             ->whereNotIn('status', [
@@ -45,7 +43,7 @@ class TodaysLeavesController extends Controller
             ])
             ->values();
 
-        return response()->json($leaves);
+        return response()->json($wfh);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Pages;
 
+use App\Filament\Actions\ImpersonateAction;
 use App\Filament\Resources\Users\UserResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -13,6 +14,7 @@ class ViewUser extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            ImpersonateAction::make(),
             EditAction::make(),
         ];
     }

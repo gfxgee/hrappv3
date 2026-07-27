@@ -47,6 +47,50 @@ it('returns null duration when the leave has no times', function () {
         ->assertJsonPath('0.duration_hours', null);
 });
 
+it('returns leaves for a specific date via the ?date override', function () {
+    $target = today()->addDays(3)->toDateString();
+
+    $onTarget = User::factory()->create(['name' => 'Target Day']);
+    LeaveRequest::factory()->create([
+        'user_id' => $onTarget->id,
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => $target,
+        'end_date' => $target,
+        'reason' => 'Future leave',
+    ]);
+
+    // Someone on leave today must NOT appear when querying the target date.
+    LeaveRequest::factory()->create([
+        'user_id' => User::factory()->create(['name' => 'Today Person'])->id,
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => today(),
+        'end_date' => today(),
+    ]);
+
+    $this->getJson(route('api.leaves.today', ['date' => $target]))
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.name', 'Target Day');
+});
+
+it('falls back to today when the ?date value is invalid', function () {
+    $user = User::factory()->create(['name' => 'Jane Doe']);
+    LeaveRequest::factory()->create([
+        'user_id' => $user->id,
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => today(),
+        'end_date' => today(),
+    ]);
+
+    $this->getJson(route('api.leaves.today', ['date' => 'not-a-date']))
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.name', 'Jane Doe');
+});
+
 it('excludes past, future, cancelled, rejected, and WFH leaves', function () {
     LeaveRequest::factory()->create([
         'start_date' => today()->subDays(10),

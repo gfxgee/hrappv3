@@ -10,6 +10,7 @@ use Filament\Support\Enums\Width;
 class ListUsers extends ListRecords
 {
     protected static string $resource = UserResource::class;
+
     protected Width|string|null $maxContentWidth = Width::Full;
 
     protected function getHeaderActions(): array

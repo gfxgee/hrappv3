@@ -6,6 +6,7 @@ use App\Models\AttendanceCorrectionRequest;
 use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -45,6 +46,52 @@ class TeamsNotifier
     public function overtimeCancelled(OverTimeRequest $request): void
     {
         $this->sendOvertime($request, 'overtime.cancelled', 'cancelled their');
+    }
+
+    /**
+     * Announce the on-call ("late dev") developer for a week.
+     */
+    public function onCallAssigned(User $user, CarbonInterface $weekStart): void
+    {
+        $weekEnd = $weekStart->endOfWeek(CarbonInterface::SUNDAY);
+        $range = $weekStart->format('M j').' – '.$weekEnd->format('M j');
+
+        $this->send([
+            'event' => 'on_call.assigned',
+            'category' => 'On-Call',
+            'icon' => '📞',
+            'employee' => $user->name,
+            'email' => $user->email,
+            'photo' => $user->getFilamentAvatarUrl(),
+            'department' => $user->department?->name,
+            'start_date' => $weekStart->toDateString(),
+            'end_date' => $weekEnd->toDateString(),
+            'text' => sprintf('📞 %s is on-call this week (%s).', $user->name, $range),
+        ]);
+    }
+
+    /**
+     * Announce that a stand-in is covering on-call for a day (the owner is on
+     * leave).
+     */
+    public function onCallStandIn(User $standIn, ?User $primary, CarbonInterface $date): void
+    {
+        $this->send([
+            'event' => 'on_call.standin',
+            'category' => 'On-Call',
+            'icon' => '📞',
+            'employee' => $standIn->name,
+            'email' => $standIn->email,
+            'photo' => $standIn->getFilamentAvatarUrl(),
+            'department' => $standIn->department?->name,
+            'covering_for' => $primary?->name,
+            'request_date' => $date->toDateString(),
+            'text' => sprintf(
+                '📞 %s is covering on-call today%s.',
+                $standIn->name,
+                $primary !== null ? ' for '.$primary->name.' (on leave)' : '',
+            ),
+        ]);
     }
 
     public function correctionFiled(AttendanceCorrectionRequest $request): void

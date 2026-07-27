@@ -1,6 +1,8 @@
 <?php
 
+use App\Console\Commands\AssignOnCall;
 use App\Console\Commands\NotifyCelebrations;
+use App\Console\Commands\NotifyOnCallStandIn;
 use App\Console\Commands\RefreshActiveEmployees;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -18,6 +20,12 @@ Schedule::command(NotifyCelebrations::class)->dailyAt('08:00');
 
 // Refresh the Active Employees map that gates the SharePoint Timekeeping mirror.
 Schedule::command(RefreshActiveEmployees::class)->dailyAt('05:00');
+
+// Declare the on-call ("late dev") developer at the start of each week.
+Schedule::command(AssignOnCall::class)->weeklyOn(1, '00:05');
+
+// Each morning, tell the stand-in when the week's on-call dev is on leave today.
+Schedule::command(NotifyOnCallStandIn::class)->dailyAt('07:30');
 
 // Daily database backup at noon (Asia/Manila) to the configured disk, then
 // prune backups older than the retention window in config/backup.php.

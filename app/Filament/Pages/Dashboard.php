@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Models\User;
 use App\Services\CelebrationService;
+use App\Services\OnCallService;
+use Carbon\CarbonInterface;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
@@ -93,6 +95,37 @@ class Dashboard extends BaseDashboard
     public function departmentName(): ?string
     {
         return auth()->user()?->department?->name;
+    }
+
+    /**
+     * On-call notice for the signed-in employee, based on today's effective
+     * on-call. Returns the week's owner notice, a stand-in notice when they're
+     * covering today, or null when it isn't them.
+     *
+     * @return array{type: 'owner'|'substitute', range: string, covering_for: ?string}|null
+     */
+    public function myOnCallNotice(): ?array
+    {
+        $user = auth()->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $service = app(OnCallService::class);
+        $effective = $service->onCallForDate(today());
+
+        if ($effective === null || ! $effective['user']->is($user)) {
+            return null;
+        }
+
+        $weekStart = $service->weekStart(today());
+
+        return [
+            'type' => $effective['is_substitute'] ? 'substitute' : 'owner',
+            'range' => $weekStart->format('M j').' – '.$weekStart->endOfWeek(CarbonInterface::SUNDAY)->format('M j'),
+            'covering_for' => $effective['is_substitute'] ? $effective['primary']?->name : null,
+        ];
     }
 
     /**

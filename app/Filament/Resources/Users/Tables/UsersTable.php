@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Filament\Actions\ImpersonateAction;
 use App\Models\User;
-use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -84,21 +84,7 @@ class UsersTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                Action::make('impersonate')
-                    ->label('Impersonate')
-                    ->icon('heroicon-o-user-circle')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->modalHeading(fn (User $record): string => "Impersonate {$record->name}?")
-                    ->modalDescription('You will browse the app as this user until you choose to stop.')
-                    // Super-admins only. Authorization is enforced server-side by the
-                    // package controller (User::canImpersonate / canBeImpersonated);
-                    // this only gates the button's visibility.
-                    ->visible(fn (User $record): bool => auth()->user() instanceof User
-                        && auth()->user()->canImpersonate()
-                        && ! $record->is(auth()->user())
-                        && $record->canBeImpersonated())
-                    ->action(fn (User $record) => redirect()->to(route('impersonate', $record))),
+                ImpersonateAction::make(),
                 DeleteAction::make(),
                 RestoreAction::make(),
             ])

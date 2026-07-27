@@ -8,6 +8,27 @@
         </div>
     @endif
 
+    {{-- On-call notice (this week's owner, or a stand-in covering today) --}}
+    @php($onCall = $this->myOnCallNotice())
+    @if ($onCall)
+        <div class="flex items-center gap-3 rounded-xl bg-warning-50 px-4 py-3 text-warning-900 ring-1 ring-warning-600/20 dark:bg-warning-500/15 dark:text-warning-100 dark:ring-warning-400/30">
+            <span class="text-2xl">📞</span>
+            <div>
+                @if ($onCall['type'] === 'substitute')
+                    <p class="text-sm font-semibold">You're covering on-call today</p>
+                    <p class="text-xs text-warning-700 dark:text-warning-200/80">
+                        Standing in for {{ $onCall['covering_for'] ?? 'the on-call developer' }}, who's on leave — you're the go-to for urgent issues today.
+                    </p>
+                @else
+                    <p class="text-sm font-semibold">You're on-call this week</p>
+                    <p class="text-xs text-warning-700 dark:text-warning-200/80">
+                        {{ $onCall['range'] }} — you're the go-to developer for urgent issues.
+                    </p>
+                @endif
+            </div>
+        </div>
+    @endif
+
     {{-- Greeting header --}}
     <div class="flex flex-wrap items-end justify-between gap-2">
         <div>
@@ -56,6 +77,7 @@
 
         {{-- Right column (1/3) --}}
         <div class="space-y-6">
+            @livewire(\App\Filament\Widgets\Employee\OnCallWidget::class)
             @livewire(\App\Filament\Widgets\Employee\ComingUpWidget::class)
             @livewire(\App\Filament\Widgets\Employee\MyPraiseWidget::class)
 
