@@ -30,12 +30,12 @@
                     class="mt-0.5 h-6 w-6 shrink-0 animate-pulse text-red-600 dark:text-red-300"
                 />
 
-                <div class="min-w-0 flex-1 [&_a]:font-medium [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5">
+                <div class="min-w-0 flex-1">
                     <p class="text-xs font-bold uppercase tracking-wide text-red-600 dark:text-red-300">Urgent alert</p>
                     @if (filled($announcement->title))
                         <p class="font-semibold">{{ $announcement->title }}</p>
                     @endif
-                    <div class="[&>p]:my-0">{!! $announcement->message !!}</div>
+                    <div class="fi-announcement-body">{!! $announcement->message !!}</div>
                 </div>
             </div>
         @endforeach
@@ -56,11 +56,11 @@
             >
                 <x-filament::icon :icon="$announcement->type->icon()" class="mt-0.5 h-5 w-5 shrink-0" />
 
-                <div class="min-w-0 flex-1 [&_a]:font-medium [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5">
+                <div class="min-w-0 flex-1">
                     @if (filled($announcement->title))
-                        <p class="font-semibold">{{ $announcement->title }}</p>
+                        <p class="mb-0.5 font-semibold">{{ $announcement->title }}</p>
                     @endif
-                    <div class="[&>p]:my-0">{!! $announcement->message !!}</div>
+                    <div class="fi-announcement-body">{!! $announcement->message !!}</div>
                 </div>
 
                 <button
