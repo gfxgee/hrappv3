@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>HR App — Developer Notes</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #18181b; --muted: #71717a; --line: #e4e4e7;
+    --code-bg: #f4f4f5; --accent: #b45309; --accent-bg: #fffbeb;
+    --card: #fafafa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18181b; --fg: #f4f4f5; --muted: #a1a1aa; --line: #3f3f46;
+      --code-bg: #27272a; --accent: #fbbf24; --accent-bg: #292524;
+      --card: #202023;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem 5rem; background: var(--bg); color: var(--fg);
+    font: 15px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; }
+  h1 { font-size: 1.8rem; margin: 0 0 .25rem; letter-spacing: -.02em; }
+  h2 {
+    font-size: 1.15rem; margin: 2.75rem 0 .85rem; padding-bottom: .4rem;
+    border-bottom: 1px solid var(--line); letter-spacing: -.01em;
+  }
+  h3 { font-size: .95rem; margin: 1.5rem 0 .5rem; }
+  p, li { color: var(--fg); }
+  .lede { color: var(--muted); margin: 0 0 1.5rem; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .86em; background: var(--code-bg); padding: .15em .4em; border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg); padding: .85rem 1rem; border-radius: 8px;
+    overflow-x: auto; margin: .6rem 0 1rem;
+  }
+  pre code { background: none; padding: 0; font-size: .84rem; line-height: 1.6; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0 1rem; font-size: .9rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+  td code { white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .note {
+    background: var(--accent-bg); border-left: 3px solid var(--accent);
+    padding: .7rem .95rem; border-radius: 0 6px 6px 0; margin: 1rem 0; font-size: .9rem;
+  }
+  .note strong { color: var(--accent); }
+  .toc { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1.1rem; }
+  .toc ul { margin: 0; padding-left: 1.1rem; columns: 2; column-gap: 2rem; }
+  .toc li { margin: .2rem 0; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); font-size: .85rem; }
+  footer { margin-top: 3.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>HR App — Developer Notes</h1>
+<p class="lede">Quick reference for setup, Artisan commands, scheduled jobs, and the JSON API.</p>
+
+<div class="toc">
+  <ul>
+    <li><a href="#stack">Stack</a></li>
+    <li><a href="#setup">Setup</a></li>
+    <li><a href="#dev">Day-to-day commands</a></li>
+    <li><a href="#artisan">Custom Artisan commands</a></li>
+    <li><a href="#schedule">Scheduled jobs</a></li>
+    <li><a href="#api">JSON API</a></li>
+    <li><a href="#structure">Where things live</a></li>
+    <li><a href="#gotchas">Gotchas</a></li>
+  </ul>
+</div>
+
+<h2 id="stack">Stack</h2>
+<div class="scroll">
+<table>
+  <tr><th>Layer</th><th>What</th></tr>
+  <tr><td>Backend</td><td>PHP 8.3+, Laravel 13</td></tr>
+  <tr><td>Admin panel</td><td>Filament 5 + Livewire 4 &mdash; desktop surface at <code>/admin</code></td></tr>
+  <tr><td>Mobile app</td><td>Inertia 3 + React 19 + Tailwind 4 &mdash; phone surface at <code>/m</code></td></tr>
+  <tr><td>Auth</td><td>Fortify, Microsoft SSO (Socialite), passkeys, 2FA</td></tr>
+  <tr><td>Realtime</td><td>Reverb + Laravel Echo</td></tr>
+  <tr><td>Tests / style</td><td>Pest 4, Pint</td></tr>
+  <tr><td>Local env</td><td>Laravel Herd &mdash; served at <code>https://hrappv3.test</code></td></tr>
+</table>
+</div>
+<p class="muted">Two surfaces, one app: phones are routed to the Inertia mobile app, desktops stay on the Filament panel.</p>
+
+<h2 id="setup">Setup</h2>
+<pre><code>composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm run build</code></pre>
+<p>Or the shortcut, which does all of the above:</p>
+<pre><code>composer setup</code></pre>
+
+<h2 id="dev">Day-to-day commands</h2>
+<h3>Run the app</h3>
+<pre><code>composer dev        # server + queue listener + vite, all at once
+npm run dev         # vite only (Herd already serves the site)
+npm run build       # production assets — required after any JS/TSX change</code></pre>
+
+<h3>Test &amp; lint</h3>
+<pre><code>php artisan test --compact                      # whole suite
+php artisan test --compact --filter=OnCall      # one file / pattern
+
+vendor/bin/pint                                 # fix PHP style (run before committing)
+npm run lint                                    # fix JS/TS
+npm run types:check                             # tsc --noEmit
+composer ci:check                               # everything CI runs</code></pre>
+
+<h3>Inspect</h3>
+<pre><code>php artisan route:list --except-vendor
+php artisan schedule:list
+php artisan config:show app.timezone
+php artisan optimize:clear                      # clear config/route/view caches</code></pre>
+
+<h2 id="artisan">Custom Artisan commands</h2>
+<div class="scroll">
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr>
+    <td><code>on-call:assign</code></td>
+    <td>Records the on-call (&ldquo;late dev&rdquo;) developer for the current week. Skips anyone out the whole week; leaves a manual HR override alone.</td>
+  </tr>
+  <tr>
+    <td><code>on-call:notify-standin</code></td>
+    <td>If the week&rsquo;s on-call dev is out for a full day today, notifies the stand-in covering (in-app + Teams).</td>
+  </tr>
+  <tr>
+    <td><code>celebrations:trigger-flow</code><br><span class="muted">--force</span></td>
+    <td>Fires the Teams celebrations flow with today&rsquo;s birthdays and work anniversaries. No-op on empty days; <code>--force</code> sends anyway (handy for testing).</td>
+  </tr>
+  <tr>
+    <td><code>app:notify-celebrations</code></td>
+    <td>Sends the in-app notification announcing today&rsquo;s birthdays and anniversaries.</td>
+  </tr>
+  <tr>
+    <td><code>zkteco:refresh-employees</code></td>
+    <td>Rebuilds the cached Active Employees map that gates the SharePoint Timekeeping mirror.</td>
+  </tr>
+  <tr>
+    <td><code>permissions:prune-orphaned</code></td>
+    <td>Deletes permissions not in the canonical seeder set and detaches them from roles.</td>
+  </tr>
+  <tr>
+    <td><code>leave:import-sharepoint {path}</code><br><span class="muted">--dry-run</span></td>
+    <td>One-off import of the legacy SharePoint <em>Timeoff</em> CSV into <code>leave_requests</code>. Upserts on the SharePoint id, so it&rsquo;s safe to re-run.</td>
+  </tr>
+  <tr>
+    <td><code>overtime:import-sharepoint {path}</code><br><span class="muted">--dry-run</span></td>
+    <td>Same, for the legacy <em>Overtime</em> CSV into <code>over_time_requests</code>.</td>
+  </tr>
+</table>
+</div>
+
+<div class="note">
+  <strong>Always dry-run the importers first.</strong> They resolve emails to user ids and skip rows with no matching user &mdash; <code>--dry-run</code> reports exactly what would import and what gets skipped, without writing.
+</div>
+
+<h2 id="schedule">Scheduled jobs</h2>
+<p class="muted">App timezone is <code>Asia/Manila</code>, so these times are local. Requires the scheduler cron on the server.</p>
+<div class="scroll">
+<table>
+  <tr><th>When</th><th>Job</th></tr>
+  <tr><td>Mon 00:05</td><td><code>on-call:assign</code> &mdash; declare the week&rsquo;s on-call dev</td></tr>
+  <tr><td>Daily 05:00</td><td><code>zkteco:refresh-employees</code></td></tr>
+  <tr><td>Daily 07:30</td><td><code>on-call:notify-standin</code></td></tr>
+  <tr><td>Daily 08:00</td><td><code>app:notify-celebrations</code> &mdash; in-app announcement</td></tr>
+  <tr><td>Daily 09:00</td><td><code>celebrations:trigger-flow</code> &mdash; Teams flow webhook</td></tr>
+  <tr><td>Daily 12:00 / 12:30</td><td><code>backup:run --only-db</code> then <code>backup:clean</code></td></tr>
+  <tr><td>Daily</td><td><code>activitylog:clean</code> &mdash; prune logs past retention</td></tr>
+</table>
+</div>
+
+<h2 id="api">JSON API</h2>
+<p>Read-only <code>GET</code> feeds consumed by the SharePoint / Power Automate &rarr; Teams automation. Base path <code>/api</code>. Every <code>?date=</code> takes <code>YYYY-MM-DD</code> and falls back to today; every <code>?days=</code> takes <code>1&ndash;365</code>.</p>
+<div class="scroll">
+<table>
+  <tr><th>Endpoint</th><th>Returns</th></tr>
+  <tr><td><code>GET /api/leaves/today</code></td><td>Everyone on leave (excludes WFH). <code>?date=</code></td></tr>
+  <tr><td><code>GET /api/leaves/wfh</code></td><td>Everyone working from home. <code>?date=</code></td></tr>
+  <tr><td><code>GET /api/on-call/current</code></td><td>The week&rsquo;s on-call owner. <code>?date=</code></td></tr>
+  <tr><td><code>GET /api/on-call/today</code></td><td>Who is <em>effectively</em> on-call today (owner or stand-in). <code>?date=</code></td></tr>
+  <tr><td><code>GET /api/upcoming/leaves</code></td><td>Upcoming leaves in the window. <code>?days=</code></td></tr>
+  <tr><td><code>GET /api/upcoming/birthdays</code></td><td>Upcoming birthdays. <code>?days=</code></td></tr>
+  <tr><td><code>GET /api/upcoming/anniversaries</code></td><td>Upcoming work anniversaries. <code>?days=</code></td></tr>
+  <tr><td><code>GET /api/upcoming/holidays</code></td><td>Upcoming holidays. <code>?days=</code></td></tr>
+  <tr><td><code>POST /api/attendance/biometric-punch</code></td><td>Inbound biometric webhook (shared-secret header).</td></tr>
+</table>
+</div>
+<p>Leave payloads carry both <code>type</code> (display label, e.g. <em>Sick Leave</em>) and <code>type_value</code> (stable enum key, e.g. <code>sick</code>). <strong>Branch on <code>type_value</code></strong> &mdash; labels may be reworded.</p>
+<p class="muted">Full request/response reference: <code>docs/api.md</code> in the repo.</p>
+
+<div class="note">
+  <strong>These GET feeds are unauthenticated.</strong> Fine for the internal automation, but don&rsquo;t add anything sensitive to them without putting auth in front first.
+</div>
+
+<h2 id="structure">Where things live</h2>
+<div class="scroll">
+<table>
+  <tr><th>Path</th><th>What</th></tr>
+  <tr><td><code>app/Filament/Resources/</code></td><td>Admin CRUD (users, leave, overtime, on-call roster, assets&hellip;)</td></tr>
+  <tr><td><code>app/Filament/Widgets/</code></td><td>Dashboard cards (clock in/out, balances, on-call, praise)</td></tr>
+  <tr><td><code>app/Http/Controllers/Mobile/</code></td><td>Inertia endpoints for the <code>/m</code> app</td></tr>
+  <tr><td><code>app/Http/Controllers/Api/</code></td><td>The JSON feeds above</td></tr>
+  <tr><td><code>app/Services/</code></td><td>Domain logic &mdash; <code>OnCallService</code>, <code>LeaveCreditService</code>, <code>CelebrationService</code>, <code>TeamsNotifier</code>, <code>DtrService</code></td></tr>
+  <tr><td><code>resources/js/pages/mobile/</code></td><td>React pages for the mobile app</td></tr>
+  <tr><td><code>routes/console.php</code></td><td>The schedule</td></tr>
+  <tr><td><code>tests/Feature/</code></td><td>Pest tests (most coverage lives here, not Unit)</td></tr>
+</table>
+</div>
+
+<h2 id="gotchas">Gotchas</h2>
+<ul>
+  <li><strong>Composer platform is pinned to PHP 8.3.20</strong> in <code>composer.json</code> so the lockfile stays installable on the production server. Don&rsquo;t remove it unless the server moves to 8.4+.</li>
+  <li><strong>Frontend changes need a build.</strong> If a UI change isn&rsquo;t showing, run <code>npm run build</code> (or <code>npm run dev</code>).</li>
+  <li><strong>The mobile surface is excluded from Filament SPA mode.</strong> <code>/m/*</code> is in <code>spaUrlExceptions</code> because Inertia can&rsquo;t boot via <code>wire:navigate</code> &mdash; removing it breaks mobile login.</li>
+  <li><strong>Leave credits are per calendar year.</strong> Usage resets every Jan 1; only the current year counts against a quota.</li>
+  <li><strong>On-call availability means full-day.</strong> A partial-day leave (e.g. 10:00&ndash;13:00) keeps someone on-call; WFH never counts as away.</li>
+  <li><strong>Run Pint before committing</strong> &mdash; CI checks style.</li>
+  <li><strong>Secrets live in <code>.env</code> only</strong> (Teams flow URLs, Graph credentials, webhook secrets). Never commit them or paste them into shared docs.</li>
+</ul>
+
+<footer>
+  <p class="muted">Internal developer reference. Keep in sync with <code>docs/api.md</code> and <code>CLAUDE.md</code>.</p>
+</footer>
+
+</div>
+</body>
+</html>

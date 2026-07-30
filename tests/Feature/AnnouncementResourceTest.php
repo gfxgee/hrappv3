@@ -4,6 +4,7 @@ use App\Enum\AnnouncementType;
 use App\Filament\Resources\Announcements\AnnouncementResource;
 use App\Filament\Resources\Announcements\Pages\CreateAnnouncement;
 use App\Filament\Resources\Announcements\Pages\ListAnnouncements;
+use App\Filament\Resources\Announcements\Tables\AnnouncementsTable;
 use App\Models\Announcement;
 use App\Models\Department;
 use App\Models\User;
@@ -77,4 +78,30 @@ it('creates an announcement with type, schedule and targeted departments', funct
     expect($announcement->type)->toBe(AnnouncementType::WARNING)
         ->and($announcement->is_active)->toBeTrue()
         ->and($announcement->departments->pluck('id')->all())->toBe([$department->id]);
+});
+
+it('trims the announcement message to a short excerpt for the table', function () {
+    $long = '<p>'.str_repeat('word ', 200).'</p>';
+
+    $excerpt = AnnouncementsTable::excerpt($long);
+
+    expect(mb_strlen($excerpt))->toBeLessThanOrEqual(123) // 120 + "..."
+        ->and($excerpt)->toEndWith('...');
+});
+
+it('decodes entities and keeps words apart in the excerpt', function () {
+    $message = '<p>A &quot;Fit to Work&quot; note is required.</p><p>Vacation Leave</p><p>Employees may avail.</p>';
+
+    $excerpt = AnnouncementsTable::excerpt($message, 400);
+
+    // Real quotes, not "&quot;" — and block tags become spaces so the last word
+    // of one paragraph doesn't glue onto the first word of the next.
+    expect($excerpt)->toContain('"Fit to Work"')
+        ->and($excerpt)->toContain('Vacation Leave Employees')
+        ->and($excerpt)->not->toContain('&quot;')
+        ->and($excerpt)->not->toContain('LeaveEmployees');
+});
+
+it('returns an empty excerpt for a blank message', function () {
+    expect(AnnouncementsTable::excerpt(null))->toBe('');
 });
