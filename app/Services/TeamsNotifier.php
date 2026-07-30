@@ -7,6 +7,7 @@ use App\Models\LeaveRequest;
 use App\Models\OverTimeRequest;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -46,6 +47,63 @@ class TeamsNotifier
     public function overtimeCancelled(OverTimeRequest $request): void
     {
         $this->sendOvertime($request, 'overtime.cancelled', 'cancelled their');
+    }
+
+    /**
+     * Trigger the celebrations flow with today's birthdays and work
+     * anniversaries. Posts to its own endpoint (services.teams.celebrations_flow_url).
+     *
+     * @param  Collection<int, User>  $birthdays
+     * @param  Collection<int, array{user: User, years: int}>  $anniversaries
+     */
+    public function celebrationsToday(Collection $birthdays, Collection $anniversaries): void
+    {
+        $names = $birthdays->map(fn (User $user): string => $user->name)
+            ->concat($anniversaries->map(fn (array $entry): string => $entry['user']->name));
+
+        $this->send([
+            'event' => 'celebrations.today',
+            'category' => 'Celebrations',
+            'icon' => '🎂',
+            'date' => today()->toDateString(),
+            'birthday_count' => $birthdays->count(),
+            'anniversary_count' => $anniversaries->count(),
+            'birthdays' => $birthdays->map(fn (User $user): array => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'photo' => $user->getFilamentAvatarUrl(),
+                'department' => $user->department?->name,
+            ])->values()->all(),
+            'anniversaries' => $anniversaries->map(fn (array $entry): array => [
+                'name' => $entry['user']->name,
+                'email' => $entry['user']->email,
+                'photo' => $entry['user']->getFilamentAvatarUrl(),
+                'department' => $entry['user']->department?->name,
+                'years' => $entry['years'],
+            ])->values()->all(),
+            'text' => $this->celebrationText($birthdays, $anniversaries),
+            'names' => $names->values()->all(),
+        ], config('services.teams.celebrations_flow_url'));
+    }
+
+    /**
+     * One-line summary of today's celebrations for the Teams card.
+     *
+     * @param  Collection<int, User>  $birthdays
+     * @param  Collection<int, array{user: User, years: int}>  $anniversaries
+     */
+    protected function celebrationText(Collection $birthdays, Collection $anniversaries): string
+    {
+        $parts = $birthdays
+            ->map(fn (User $user): string => "🎂 It's {$user->name}'s birthday today!")
+            ->concat($anniversaries->map(fn (array $entry): string => sprintf(
+                '🎉 %s is celebrating %d %s with the team today!',
+                $entry['user']->name,
+                $entry['years'],
+                $entry['years'] === 1 ? 'year' : 'years',
+            )));
+
+        return $parts->implode(' ');
     }
 
     /**
@@ -215,10 +273,11 @@ class TeamsNotifier
 
     /**
      * @param  array<string, mixed>  $payload
+     * @param  string|null  $url  Target flow endpoint; defaults to the main one.
      */
-    protected function send(array $payload): void
+    protected function send(array $payload, ?string $url = null): void
     {
-        $url = config('services.teams.flow_url');
+        $url ??= config('services.teams.flow_url');
 
         if (blank($url)) {
             return;

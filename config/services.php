@@ -39,6 +39,10 @@ return [
         // Power Automate "When an HTTP request is received" endpoint that posts
         // to a Teams channel. Carries a signature token — keep it in .env only.
         'flow_url' => env('TEAMS_FLOW_URL'),
+        // Separate Power Automate endpoint triggered each morning when someone
+        // has a birthday or work anniversary today. Also signature-bearing —
+        // keep it in .env only.
+        'celebrations_flow_url' => env('TEAMS_CELEBRATIONS_FLOW_URL'),
         // Who to @mention for approval when the employee's department has no
         // team leader set.
         'default_approver' => env('TEAMS_DEFAULT_APPROVER', 'gee@digitalfeet.com'),
