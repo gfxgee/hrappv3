@@ -68,18 +68,23 @@ class TeamsNotifier
             'date' => today()->toDateString(),
             'birthday_count' => $birthdays->count(),
             'anniversary_count' => $anniversaries->count(),
+            // Nested item fields are coerced to strings — never null. The flow's
+            // Parse JSON schema marks photo/department as required strings, and
+            // the root-level null-stripping in send() doesn't reach inside these
+            // arrays, so a null here would fail the flow ("Expected String but
+            // got Null"). Employees with no avatar or no department send ''.
             'birthdays' => $birthdays->map(fn (User $user): array => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'photo' => $user->getFilamentAvatarUrl(),
-                'department' => $user->department?->name,
+                'name' => (string) $user->name,
+                'email' => (string) $user->email,
+                'photo' => (string) ($user->getFilamentAvatarUrl() ?? ''),
+                'department' => (string) ($user->department?->name ?? ''),
             ])->values()->all(),
             'anniversaries' => $anniversaries->map(fn (array $entry): array => [
-                'name' => $entry['user']->name,
-                'email' => $entry['user']->email,
-                'photo' => $entry['user']->getFilamentAvatarUrl(),
-                'department' => $entry['user']->department?->name,
-                'years' => $entry['years'],
+                'name' => (string) $entry['user']->name,
+                'email' => (string) $entry['user']->email,
+                'photo' => (string) ($entry['user']->getFilamentAvatarUrl() ?? ''),
+                'department' => (string) ($entry['user']->department?->name ?? ''),
+                'years' => (int) $entry['years'],
             ])->values()->all(),
             'text' => $this->celebrationText($birthdays, $anniversaries),
             'names' => $names->values()->all(),

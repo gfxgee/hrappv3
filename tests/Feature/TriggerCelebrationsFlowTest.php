@@ -28,6 +28,66 @@ it('triggers the flow with today\'s birthdays and anniversaries', function () {
     });
 });
 
+it('never sends null for nested photo or department', function () {
+    // The client's Parse JSON schema requires photo/department to be strings, so
+    // an employee with no avatar and no department must still send '' — not null.
+    User::factory()->create([
+        'name' => 'No Photo No Dept',
+        'birthday' => today()->format('1990-m-d'),
+        'photo' => null,
+        'department_id' => null,
+    ]);
+    User::factory()->create([
+        'name' => 'Anniversary No Dept',
+        'date_hired' => today()->format('2020-m-d'),
+        'photo' => null,
+        'department_id' => null,
+    ]);
+
+    $this->artisan('celebrations:trigger-flow')->assertSuccessful();
+
+    Http::assertSent(function (Request $request): bool {
+        $body = $request->data();
+
+        foreach ([...$body['birthdays'], ...$body['anniversaries']] as $entry) {
+            foreach (['name', 'email', 'photo', 'department'] as $field) {
+                expect($entry)->toHaveKey($field)
+                    ->and($entry[$field])->toBeString();
+            }
+        }
+
+        return $body['birthdays'][0]['photo'] === ''
+            && $body['birthdays'][0]['department'] === ''
+            && $body['anniversaries'][0]['photo'] === ''
+            && $body['anniversaries'][0]['department'] === '';
+    });
+});
+
+it('sends every field the client\'s flow schema requires', function () {
+    User::factory()->create(['name' => 'Birthday Person', 'birthday' => today()->format('1990-m-d')]);
+
+    $this->artisan('celebrations:trigger-flow')->assertSuccessful();
+
+    Http::assertSent(function (Request $request): bool {
+        $body = $request->data();
+
+        expect($body)->toHaveKeys([
+            'event', 'date', 'birthday_count', 'anniversary_count',
+            'birthdays', 'anniversaries', 'names', 'text',
+        ])
+            ->and($body['event'])->toBeString()
+            ->and($body['date'])->toBeString()
+            ->and($body['birthday_count'])->toBeInt()
+            ->and($body['anniversary_count'])->toBeInt()
+            ->and($body['birthdays'])->toBeArray()
+            ->and($body['anniversaries'])->toBeArray()
+            ->and($body['names'])->toBeArray()
+            ->and($body['text'])->toBeString();
+
+        return true;
+    });
+});
+
 it('does not trigger the flow when nobody is celebrating', function () {
     User::factory()->create([
         'birthday' => today()->addDays(10)->format('1990-m-d'),
