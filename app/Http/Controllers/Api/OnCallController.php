@@ -28,6 +28,7 @@ class OnCallController extends Controller
 
         return response()->json([
             'name' => $assignment?->user?->name,
+            'display_name' => $assignment?->user?->displayName(),
             'week_start' => $weekStart->toDateString(),
             'week_end' => $weekStart->endOfWeek(CarbonInterface::SUNDAY)->toDateString(),
         ]);
@@ -43,10 +44,14 @@ class OnCallController extends Controller
         $date = $this->resolveDate($request);
         $effective = $this->onCall->onCallForDate($date);
 
+        $isSubstitute = $effective['is_substitute'] ?? false;
+
         return response()->json([
             'name' => $effective['user']->name ?? null,
-            'is_substitute' => $effective['is_substitute'] ?? false,
-            'covering_for' => ($effective['is_substitute'] ?? false) ? $effective['primary']?->name : null,
+            'display_name' => $effective['user']?->displayName(),
+            'is_substitute' => $isSubstitute,
+            'covering_for' => $isSubstitute ? $effective['primary']?->name : null,
+            'covering_for_display_name' => $isSubstitute ? $effective['primary']?->displayName() : null,
             'date' => $date->toDateString(),
         ]);
     }

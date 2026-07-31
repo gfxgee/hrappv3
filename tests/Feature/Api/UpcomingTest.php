@@ -118,3 +118,30 @@ describe('upcoming holidays', function () {
             ->and($response->json('1.name'))->toBe('Far Holiday');
     });
 });
+
+describe('display name', function () {
+    it('sends the display name alongside the full name', function () {
+        User::factory()->create([
+            'name' => 'Nik Cyrell Z. Yabo',
+            'display_name' => 'Nik',
+            'birthday' => today()->addDays(2)->format('1990-m-d'),
+        ]);
+
+        $response = $this->getJson(route('api.upcoming.birthdays', ['days' => 30]))->assertOk();
+
+        expect($response->json('0.name'))->toBe('Nik Cyrell Z. Yabo')
+            ->and($response->json('0.display_name'))->toBe('Nik');
+    });
+
+    it('falls back to the full name when no display name is set', function () {
+        User::factory()->create([
+            'name' => 'No Nickname',
+            'display_name' => null,
+            'birthday' => today()->addDays(2)->format('1990-m-d'),
+        ]);
+
+        $response = $this->getJson(route('api.upcoming.birthdays', ['days' => 30]))->assertOk();
+
+        expect($response->json('0.display_name'))->toBe('No Nickname');
+    });
+});

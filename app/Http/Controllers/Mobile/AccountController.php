@@ -14,7 +14,7 @@ class AccountController extends Controller
         $user = $request->user();
 
         return Inertia::render('mobile/account', [
-            'name' => $user->display_name ?: $user->name,
+            'name' => $user->displayName(),
             'email' => $user->email,
             'department' => $user->department?->name,
         ]);

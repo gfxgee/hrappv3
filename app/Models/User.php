@@ -60,6 +60,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar, PasskeyUs
     }
 
     /**
+     * The short, friendly name for UI and API payloads — the explicit display
+     * name when set, otherwise the full name. Never blank, so consumers can use
+     * it directly without a fallback of their own.
+     */
+    public function displayName(): string
+    {
+        return $this->display_name ?: (string) $this->name;
+    }
+
+    /**
      * Whether the user holds an HR/admin-level role.
      */
     public function isManager(): bool

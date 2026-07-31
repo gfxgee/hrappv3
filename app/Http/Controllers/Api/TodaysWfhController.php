@@ -24,7 +24,7 @@ class TodaysWfhController extends Controller
         $date = $this->resolveDate($request);
 
         $wfh = LeaveRequest::query()
-            ->with('user:id,name')
+            ->with('user:id,name,display_name')
             ->where('request_type', LeaveType::WFH->value)
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
@@ -36,6 +36,7 @@ class TodaysWfhController extends Controller
             ->get()
             ->map(fn (LeaveRequest $leave): array => [
                 'name' => $leave->user?->name,
+                'display_name' => $leave->user?->displayName(),
                 'reason' => $leave->reason,
                 'start_time' => $leave->start_time,
                 'end_time' => $leave->end_time,

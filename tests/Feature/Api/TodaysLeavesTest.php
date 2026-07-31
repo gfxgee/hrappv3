@@ -6,7 +6,7 @@ use App\Models\LeaveRequest;
 use App\Models\User;
 
 it('returns name, reason, and time duration of everyone on leave today', function () {
-    $user = User::factory()->create(['name' => 'Jane Doe']);
+    $user = User::factory()->create(['name' => 'Jane Doe', 'display_name' => 'Jane']);
     LeaveRequest::factory()->create([
         'user_id' => $user->id,
         'request_type' => LeaveType::VACATION,
@@ -23,6 +23,7 @@ it('returns name, reason, and time duration of everyone on leave today', functio
         ->assertExactJson([
             [
                 'name' => 'Jane Doe',
+                'display_name' => 'Jane',
                 'type' => 'Vacation Leave',
                 'type_value' => 'vacation',
                 'reason' => 'Family trip',

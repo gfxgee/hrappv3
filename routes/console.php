@@ -19,9 +19,9 @@ Schedule::command('activitylog:clean')->daily();
 // Announce today's birthdays and work anniversaries each morning.
 Schedule::command(NotifyCelebrations::class)->dailyAt('08:00');
 
-// Trigger the Teams celebrations flow at 9am (Asia/Manila), but only on days
+// Trigger the Teams celebrations flow at 11am (Asia/Manila), but only on days
 // when someone actually has a birthday or work anniversary.
-Schedule::command(TriggerCelebrationsFlow::class)->dailyAt('09:00');
+Schedule::command(TriggerCelebrationsFlow::class)->dailyAt('11:00');
 
 // Refresh the Active Employees map that gates the SharePoint Timekeeping mirror.
 Schedule::command(RefreshActiveEmployees::class)->dailyAt('05:00');

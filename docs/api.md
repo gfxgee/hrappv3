@@ -9,6 +9,10 @@ automation. All are **GET**, return **JSON**, and are **read-only**.
 - **Dates:** every `?date=` accepts `YYYY-MM-DD`. If omitted or unparseable, it
   falls back to **today**. Useful for testing the payload on a weekday when the
   current day (e.g. a weekend) has no data.
+- **Names:** wherever a person appears, payloads carry both `name` (the full
+  legal name, e.g. `Nik Cyrell Z. Yabo`) and `display_name` (the short friendly
+  name, e.g. `Nik`). `display_name` falls back to the full name when unset, so
+  it is never blank &mdash; prefer it for Teams messages and cards.
 
 ---
 
@@ -24,6 +28,7 @@ Response — array of:
 [
   {
     "name": "Jane Doe",
+    "display_name": "Jane",
     "type": "Vacation Leave",
     "type_value": "vacation",
     "reason": "Family trip",
@@ -83,6 +88,7 @@ Response:
 ```json
 {
   "name": "Dev A",
+  "display_name": "Dev A",
   "week_start": "2026-07-27",
   "week_end": "2026-08-02"
 }
@@ -99,14 +105,17 @@ Response:
 ```json
 {
   "name": "Dev B",
+  "display_name": "Dev B",
   "is_substitute": true,
   "covering_for": "Dev A",
+  "covering_for_display_name": "Dev A",
   "date": "2026-07-29"
 }
 ```
 - `is_substitute` — `true` when a stand-in is covering for the owner.
-- `covering_for` — the owner's name when `is_substitute` is `true`, else `null`.
-- `name` is `null` when nobody is available.
+- `covering_for` / `covering_for_display_name` — the owner's names when
+  `is_substitute` is `true`, else `null`.
+- `name` / `display_name` are `null` when nobody is available.
 
 ---
 
@@ -123,6 +132,7 @@ cancelled, and rejected.
 [
   {
     "name": "Jane Doe",
+    "display_name": "Jane",
     "type": "Sick Leave",
     "type_value": "sick",
     "reason": "Checkup",
@@ -139,7 +149,7 @@ Active employees whose birthday falls within the window, soonest first.
 
 ```json
 [
-  { "name": "Jane Doe", "date": "2026-08-01", "days_until": 5 }
+  { "name": "Jane Doe", "display_name": "Jane", "date": "2026-08-01", "days_until": 5 }
 ]
 ```
 
@@ -150,7 +160,7 @@ with no hire date.
 
 ```json
 [
-  { "name": "Jane Doe", "years": 6, "date": "2026-08-01", "days_until": 5 }
+  { "name": "Jane Doe", "display_name": "Jane", "years": 6, "date": "2026-08-01", "days_until": 5 }
 ]
 ```
 `years` is the anniversary being reached (e.g. `6` = their 6th year).

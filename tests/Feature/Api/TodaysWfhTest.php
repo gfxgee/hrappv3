@@ -6,7 +6,7 @@ use App\Models\LeaveRequest;
 use App\Models\User;
 
 it('returns everyone working from home today', function () {
-    $user = User::factory()->create(['name' => 'Home Worker']);
+    $user = User::factory()->create(['name' => 'Home Worker', 'display_name' => 'Homer']);
     LeaveRequest::factory()->create([
         'user_id' => $user->id,
         'request_type' => LeaveType::WFH,
@@ -23,6 +23,7 @@ it('returns everyone working from home today', function () {
         ->assertExactJson([
             [
                 'name' => 'Home Worker',
+                'display_name' => 'Homer',
                 'reason' => 'Focus day',
                 'start_time' => '10:00',
                 'end_time' => '18:00',

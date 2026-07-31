@@ -31,7 +31,7 @@ class UpcomingController extends Controller
         $windowEnd = today()->addDays($this->windowDays($request));
 
         $leaves = LeaveRequest::query()
-            ->with('user:id,name')
+            ->with('user:id,name,display_name')
             ->where('request_type', '!=', LeaveType::WFH->value)
             ->whereNotIn('status', [
                 AttendanceStatus::REJECTED->value,
@@ -43,6 +43,7 @@ class UpcomingController extends Controller
             ->get()
             ->map(fn (LeaveRequest $leave): array => [
                 'name' => $leave->user?->name,
+                'display_name' => $leave->user?->displayName(),
                 'type' => $leave->request_type?->plainLabel(),
                 'type_value' => $leave->request_type?->value,
                 'reason' => $leave->reason,
@@ -64,7 +65,7 @@ class UpcomingController extends Controller
 
         $birthdays = User::query()
             ->active()
-            ->get(['id', 'name', 'birthday'])
+            ->get(['id', 'name', 'display_name', 'birthday'])
             ->map(function (User $user): ?array {
                 $next = CelebrationService::nextAnnualOccurrence($user->birthday);
 
@@ -74,6 +75,7 @@ class UpcomingController extends Controller
 
                 return [
                     'name' => $user->name,
+                    'display_name' => $user->displayName(),
                     'date' => $next->toDateString(),
                     'days_until' => (int) today()->diffInDays($next),
                 ];
@@ -96,7 +98,7 @@ class UpcomingController extends Controller
 
         $anniversaries = User::query()
             ->active()
-            ->get(['id', 'name', 'date_hired'])
+            ->get(['id', 'name', 'display_name', 'date_hired'])
             ->map(function (User $user): ?array {
                 $next = CelebrationService::nextAnnualOccurrence($user->date_hired);
 
@@ -112,6 +114,7 @@ class UpcomingController extends Controller
 
                 return [
                     'name' => $user->name,
+                    'display_name' => $user->displayName(),
                     'years' => $years,
                     'date' => $next->toDateString(),
                     'days_until' => (int) today()->diffInDays($next),

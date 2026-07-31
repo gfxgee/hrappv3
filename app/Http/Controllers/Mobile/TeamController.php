@@ -69,7 +69,7 @@ class TeamController extends Controller
 
             return [
                 'id' => $user->id,
-                'name' => $user->display_name ?: $user->name,
+                'name' => $user->displayName(),
                 'initials' => $this->initials($user->name),
                 'label' => $label,
                 'status' => $status,

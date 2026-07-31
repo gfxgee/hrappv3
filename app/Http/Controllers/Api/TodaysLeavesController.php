@@ -27,7 +27,7 @@ class TodaysLeavesController extends Controller
         $date = $this->resolveDate($request);
 
         $leaves = LeaveRequest::query()
-            ->with('user:id,name')
+            ->with('user:id,name,display_name')
             ->where('request_type', '!=', LeaveType::WFH->value)
             ->whereDate('start_date', '<=', $date)
             ->whereDate('end_date', '>=', $date)
@@ -39,6 +39,7 @@ class TodaysLeavesController extends Controller
             ->get()
             ->map(fn (LeaveRequest $leave): array => [
                 'name' => $leave->user?->name,
+                'display_name' => $leave->user?->displayName(),
                 'type' => $leave->request_type?->plainLabel(),
                 'type_value' => $leave->request_type?->value,
                 'reason' => $leave->reason,
