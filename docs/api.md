@@ -180,6 +180,64 @@ Active holidays within the window, soonest first.
 ]
 ```
 
+---
+
+## Payroll summary
+
+### `GET /api/reports/leave-summary`
+Per-employee leave and overtime totals for a date range — **one request, one
+payload**, built for auto-filling payslips.
+
+Query: `start`, `end` (both `YYYY-MM-DD`, optional). Omitted values default to
+the **current calendar month**; a reversed range is swapped rather than
+returning nothing.
+
+```json
+{
+  "start_date": "2026-08-01",
+  "end_date": "2026-08-31",
+  "employee_count": 13,
+  "employees": [
+    {
+      "name": "Nik Cyrell Z. Yabo",
+      "display_name": "Nik",
+      "email": "nik@digitalfeet.com",
+      "department": "Development",
+      "leaves": {
+        "wfh":         { "days": 2,    "requests": 2 },
+        "vacation":    { "days": 1,    "requests": 1 },
+        "sick":        { "days": 0.38, "requests": 1 },
+        "emergency":   { "days": 0,    "requests": 0 },
+        "bereavement": { "days": 0,    "requests": 0 },
+        "maternity":   { "days": 0,    "requests": 0 },
+        "paternity":   { "days": 0,    "requests": 0 },
+        "lwop":        { "days": 3,    "requests": 1 }
+      },
+      "total_leave_days": 6.38,
+      "overtime_hours": 2.5,
+      "overtime_requests": 1
+    }
+  ]
+}
+```
+
+**Rules that matter for payroll:**
+
+- **Active employees only** — inactive/left employees are excluded. `employee_count`
+  is how many rows are in `employees`.
+- **Every active employee is listed**, even with nothing in the range, and **all
+  eight leave-type keys are always present** (zeroed). No missing keys, no nulls —
+  safe to index directly in a flow.
+- **Only approved and HR-verified records count.** Pending, rejected, and
+  cancelled leave/overtime are ignored, so nothing awaiting approval affects pay.
+- **Days are clipped to the range.** A leave running Jul 31 → Aug 4 contributes
+  only its in-range working days to an August report.
+- **Days are working days**, so weekends and holidays are free, and a partial-day
+  leave costs a fraction (10:00–13:00 of an 8-hour day = `0.38`).
+- `days`, `total_leave_days`, and `overtime_hours` can be **fractional** — type
+  them as `number` (not `integer`) in a Power Automate Parse JSON schema.
+  Whole values serialise without a decimal (`3`, not `3.0`).
+
 ## Outbound Teams events
 
 The app also **pushes** to the Power Automate flow (`services.teams.flow_url`).

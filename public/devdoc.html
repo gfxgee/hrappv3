@@ -189,6 +189,7 @@ php artisan optimize:clear                      # clear config/route/view caches
   <tr><th>Endpoint</th><th>Returns</th></tr>
   <tr><td><code>GET /api/leaves/today</code></td><td>Everyone on leave (excludes WFH). <code>?date=</code></td></tr>
   <tr><td><code>GET /api/leaves/wfh</code></td><td>Everyone working from home. <code>?date=</code></td></tr>
+  <tr><td><code>GET /api/reports/leave-summary</code></td><td>Per-active-employee leave &amp; overtime totals for payroll. <code>?start=</code> <code>?end=</code></td></tr>
   <tr><td><code>GET /api/on-call/current</code></td><td>The week&rsquo;s on-call owner. <code>?date=</code></td></tr>
   <tr><td><code>GET /api/on-call/today</code></td><td>Who is <em>effectively</em> on-call today (owner or stand-in). <code>?date=</code></td></tr>
   <tr><td><code>GET /api/upcoming/leaves</code></td><td>Upcoming leaves in the window. <code>?days=</code></td></tr>

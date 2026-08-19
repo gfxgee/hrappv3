@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\BiometricPunchController;
+use App\Http\Controllers\Api\LeaveSummaryController;
 use App\Http\Controllers\Api\OnCallController;
 use App\Http\Controllers\Api\TodaysLeavesController;
 use App\Http\Controllers\Api\TodaysWfhController;
@@ -22,6 +23,11 @@ Route::get('leaves/today', TodaysLeavesController::class)
 // Today's WFH — everyone working from home today (same ?date= override).
 Route::get('leaves/wfh', TodaysWfhController::class)
     ->name('api.leaves.wfh');
+
+// Payroll summary — per-active-employee leave/overtime totals for a date range
+// (?start=&end=, defaults to the current month). One payload for payslip input.
+Route::get('reports/leave-summary', LeaveSummaryController::class)
+    ->name('api.reports.leave-summary');
 
 // On-call ("late dev"): `current` is the week's owner; `today` is who is
 // effectively covering today (owner, or a stand-in on the owner's leave days).
