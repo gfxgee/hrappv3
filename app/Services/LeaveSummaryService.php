@@ -73,14 +73,32 @@ class LeaveSummaryService
                     continue;
                 }
 
-                $byType[$key]['days'] = round(
-                    $byType[$key]['days'] + $this->daysInRange($leave, $start, $end, $workingHours, $holidays),
-                    2,
-                );
+                $entry = $this->entryFor($leave, $start, $end, $workingHours, $holidays);
+
+                if ($entry === null) {
+                    continue;
+                }
+
+                $byType[$key]['days'] = round($byType[$key]['days'] + $entry['days'], 2);
+                $byType[$key]['hours'] = round($byType[$key]['hours'] + $entry['hours'], 2);
                 $byType[$key]['requests']++;
+                $byType[$key]['entries'][] = $entry;
             }
 
-            $hours = $overtime->get($user->id, collect());
+            // Chronological, matching how the payslip lists them.
+            foreach ($byType as $key => $bucket) {
+                usort($byType[$key]['entries'], fn (array $a, array $b): int => $a['date'] <=> $b['date']);
+            }
+
+            $overtimeRows = $overtime->get($user->id, collect())
+                ->sortBy(fn (OverTimeRequest $ot): string => $ot->request_date?->toDateString() ?? '')
+                ->map(fn (OverTimeRequest $ot): array => [
+                    'date' => $ot->request_date?->toDateString() ?? '',
+                    'hours' => round((float) $ot->hours, 2),
+                    'reason' => (string) ($ot->reason ?? ''),
+                ])
+                ->values()
+                ->all();
 
             return [
                 'name' => $user->name,
@@ -89,8 +107,10 @@ class LeaveSummaryService
                 'department' => $user->department?->name ?? '',
                 'leaves' => $byType,
                 'total_leave_days' => round(array_sum(array_column($byType, 'days')), 2),
-                'overtime_hours' => round((float) $hours->sum('hours'), 2),
-                'overtime_requests' => $hours->count(),
+                'total_leave_hours' => round(array_sum(array_column($byType, 'hours')), 2),
+                'overtime_hours' => round(array_sum(array_column($overtimeRows, 'hours')), 2),
+                'overtime_requests' => count($overtimeRows),
+                'overtime_entries' => $overtimeRows,
             ];
         });
 
@@ -112,7 +132,7 @@ class LeaveSummaryService
         $totals = [];
 
         foreach (LeaveType::all() as $type) {
-            $totals[$type->value] = ['days' => 0.0, 'requests' => 0];
+            $totals[$type->value] = ['days' => 0.0, 'hours' => 0.0, 'requests' => 0, 'entries' => []];
         }
 
         return $totals;
@@ -131,7 +151,7 @@ class LeaveSummaryService
             ->whereIn('status', self::PAYABLE_STATUSES)
             ->whereDate('start_date', '<=', $end)
             ->whereDate('end_date', '>=', $start)
-            ->get(['user_id', 'request_type', 'start_date', 'end_date', 'start_time', 'end_time'])
+            ->get(['user_id', 'request_type', 'start_date', 'end_date', 'start_time', 'end_time', 'reason'])
             ->groupBy('user_id');
     }
 
@@ -148,25 +168,27 @@ class LeaveSummaryService
             ->whereIn('status', self::PAYABLE_STATUSES)
             ->whereDate('request_date', '>=', $start)
             ->whereDate('request_date', '<=', $end)
-            ->get(['user_id', 'hours', 'request_date'])
+            ->get(['user_id', 'hours', 'request_date', 'reason'])
             ->groupBy('user_id');
     }
 
     /**
-     * The leave's working-day cost that falls *inside* the range, so a leave
-     * spanning the range boundary is only counted for the days within it.
+     * One itemised entry for a leave, measured *inside* the range only — so a
+     * leave spanning the range boundary contributes just its in-range days.
+     * Returns null when nothing of the leave lands on a working day in range.
      *
      * @param  list<string>  $holidays
+     * @return array{date: string, end_date: string, days: float, hours: float, reason: string}|null
      */
-    private function daysInRange(
+    private function entryFor(
         LeaveRequest $leave,
         CarbonImmutable $start,
         CarbonImmutable $end,
         float $workingHours,
         array $holidays,
-    ): float {
+    ): ?array {
         if ($leave->start_date === null || $leave->end_date === null) {
-            return 0.0;
+            return null;
         }
 
         $leaveStart = CarbonImmutable::parse($leave->start_date)->startOfDay();
@@ -176,29 +198,55 @@ class LeaveSummaryService
         $to = $leaveEnd->lessThan($end) ? $leaveEnd : $end;
 
         if ($from->greaterThan($to)) {
-            return 0.0;
+            return null;
         }
 
         // A single-day leave is fully described by its own times, so reuse the
-        // model's partial-day maths (a 10:00–13:00 leave costs a fraction).
+        // model's partial-day maths (a 10:00-13:00 leave costs a fraction).
         if ($leaveStart->equalTo($leaveEnd)) {
-            return $leave->durationInDays($workingHours, $holidays);
+            $days = $leave->durationInDays($workingHours, $holidays);
+            $workingDates = [$from];
+        } else {
+            $workingDates = $this->workingDatesBetween($from, $to, $holidays);
+            $days = (float) count($workingDates);
         }
 
-        // Multi-day leave: count only the working days inside the range. Times
-        // are ignored here, matching how the model treats multi-day leaves.
+        if ($days <= 0 || $workingDates === []) {
+            return null; // weekend or holiday only — nothing payable
+        }
+
+        // Report the first/last day actually deducted, not the range edge, so a
+        // leave clipped to a Saturday boundary still reads as the Monday it hit.
+        return [
+            'date' => reset($workingDates)->toDateString(),
+            'end_date' => end($workingDates)->toDateString(),
+            'days' => round($days, 2),
+            // Payslips express deductions in hours, so give both.
+            'hours' => round($days * $workingHours, 2),
+            'reason' => (string) ($leave->reason ?? ''),
+        ];
+    }
+
+    /**
+     * The working dates between two dates, skipping weekends and holidays.
+     *
+     * @param  list<string>  $holidays
+     * @return list<CarbonImmutable>
+     */
+    private function workingDatesBetween(CarbonImmutable $from, CarbonImmutable $to, array $holidays): array
+    {
         /** @var list<int> $workingDays */
         $workingDays = app(GeneralSettings::class)->workingDays;
         $holidayLookup = array_flip($holidays);
-        $count = 0;
+        $dates = [];
 
         for ($cursor = $from; $cursor->lessThanOrEqualTo($to); $cursor = $cursor->addDay()) {
             if (in_array($cursor->dayOfWeekIso, $workingDays, true)
                 && ! isset($holidayLookup[$cursor->format('Y-m-d')])) {
-                $count++;
+                $dates[] = $cursor;
             }
         }
 
-        return (float) $count;
+        return $dates;
     }
 }

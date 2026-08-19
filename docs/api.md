@@ -204,18 +204,31 @@ returning nothing.
       "email": "nik@digitalfeet.com",
       "department": "Development",
       "leaves": {
-        "wfh":         { "days": 2,    "requests": 2 },
-        "vacation":    { "days": 1,    "requests": 1 },
-        "sick":        { "days": 0.38, "requests": 1 },
-        "emergency":   { "days": 0,    "requests": 0 },
-        "bereavement": { "days": 0,    "requests": 0 },
-        "maternity":   { "days": 0,    "requests": 0 },
-        "paternity":   { "days": 0,    "requests": 0 },
-        "lwop":        { "days": 3,    "requests": 1 }
+        "lwop": {
+          "days": 1.38,
+          "hours": 11,
+          "requests": 2,
+          "entries": [
+            { "date": "2026-08-04", "end_date": "2026-08-04", "days": 0.38, "hours": 3, "reason": "Mild headache, need to rest more" },
+            { "date": "2026-08-06", "end_date": "2026-08-06", "days": 1,    "hours": 8, "reason": "high fever, need to rest" }
+          ]
+        },
+        "sick":     { "days": 0, "hours": 0, "requests": 0, "entries": [] },
+        "vacation": { "days": 0, "hours": 0, "requests": 0, "entries": [] },
+        "wfh":         { "days": 0, "hours": 0, "requests": 0, "entries": [] },
+        "emergency":   { "days": 0, "hours": 0, "requests": 0, "entries": [] },
+        "bereavement": { "days": 0, "hours": 0, "requests": 0, "entries": [] },
+        "maternity":   { "days": 0, "hours": 0, "requests": 0, "entries": [] },
+        "paternity":   { "days": 0, "hours": 0, "requests": 0, "entries": [] }
       },
-      "total_leave_days": 6.38,
-      "overtime_hours": 2.5,
-      "overtime_requests": 1
+      "total_leave_days": 1.38,
+      "total_leave_hours": 11,
+      "overtime_hours": 1.5,
+      "overtime_requests": 2,
+      "overtime_entries": [
+        { "date": "2026-08-07", "hours": 0.5, "reason": "client tasks and streams" },
+        { "date": "2026-08-08", "hours": 1,   "reason": "streams" }
+      ]
     }
   ]
 }
@@ -230,6 +243,17 @@ returning nothing.
   safe to index directly in a flow.
 - **Only approved and HR-verified records count.** Pending, rejected, and
   cancelled leave/overtime are ignored, so nothing awaiting approval affects pay.
+- **Itemised entries** — every leave-type bucket has an `entries` array, and each
+  employee has `overtime_entries`. Each entry carries `date`, `hours`, and
+  `reason`, sorted oldest-first — a direct match for the payslip's *Overtime* and
+  *Attendance Deductions* tables. Use `leaves.lwop.entries` for unpaid
+  deductions; the other types are itemised too if HR wants them included.
+- **Entry dates are real working days.** A leave clipped at the range boundary
+  reports the first/last day actually deducted (a Jul 31 – Aug 4 leave shows
+  `2026-08-03`, not the Aug 1 weekend edge).
+- **Hours are provided alongside days** (`days x` the employee's working-day
+  length), since payslips express deductions in hours: a 10:00-13:00 absence is
+  `0.38` days / `3` hours.
 - **Days are clipped to the range.** A leave running Jul 31 → Aug 4 contributes
   only its in-range working days to an August report.
 - **Days are working days**, so weekends and holidays are free, and a partial-day
