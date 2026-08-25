@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\RelationManagers;
 
 use App\Enum\AttendanceStatus;
 use App\Models\OverTimeRequest;
+use App\Support\RequestCsvExport;
 use Carbon\CarbonInterface;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -174,17 +175,10 @@ class OverTimeRequestsRelationManager extends RelationManager
         return response()->streamDownload(function () use ($query): void {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, ['Name', 'Email', 'Date', 'Hours', 'Reason', 'Status']);
+            fputcsv($handle, RequestCsvExport::COLUMNS);
 
             $query->with('user')->lazy()->each(function (OverTimeRequest $request) use ($handle): void {
-                fputcsv($handle, [
-                    $request->user?->name,
-                    $request->user?->email,
-                    $request->request_date?->format('Y-m-d'),
-                    $request->hours,
-                    $request->reason,
-                    $request->status->label(),
-                ]);
+                fputcsv($handle, RequestCsvExport::fromOvertime($request));
             });
 
             fclose($handle);

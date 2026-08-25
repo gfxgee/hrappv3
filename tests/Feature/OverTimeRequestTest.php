@@ -120,7 +120,7 @@ it('exports only the filtered overtime requests to CSV', function () {
     $response->sendContent();
     $csv = ob_get_clean();
 
-    expect($csv)->toContain('Name', 'Email', 'Date') // header row
+    expect($csv)->toContain('ID', 'Created', 'Title', 'Hrs') // shared request header
         ->and($csv)->toContain('Alice')
         ->and($csv)->not->toContain('Bob'); // outside the date range
 });

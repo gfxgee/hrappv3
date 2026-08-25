@@ -85,7 +85,7 @@ it('exports only the filtered leave requests to CSV', function () {
     $response->sendContent();
     $csv = ob_get_clean();
 
-    expect($csv)->toContain('Name', 'Email', 'Type') // header row
+    expect($csv)->toContain('ID', 'Created', 'Title', 'Hrs') // shared request header
         ->and($csv)->toContain('Alice')
         ->and($csv)->not->toContain('Bob'); // filtered out by status
 });
