@@ -53,6 +53,10 @@ class ManageGeneralSettings extends SettingsPage
                             ->label('Lunch threshold')
                             ->helperText('Deduct lunch only when the gross worked span exceeds this many hours.')
                             ->numeric()->minValue(0)->maxValue(24)->step(0.25)->suffix('hours')->required(),
+                        TextInput::make('lateGraceMinutes')
+                            ->label('Late grace period')
+                            ->helperText('Clocking in within this many minutes of the scheduled start is not counted late on the DTR. Past it, the full lateness counts.')
+                            ->numeric()->minValue(0)->maxValue(120)->suffix('minutes')->required(),
                         TextInput::make('standardWorkingHours')
                             ->label('Standard working hours / day')
                             ->helperText('A full working day, used when computing leave credits.')

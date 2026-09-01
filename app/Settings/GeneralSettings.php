@@ -51,6 +51,12 @@ class GeneralSettings extends Settings
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Minutes an employee may clock in past their scheduled start without being
+     * marked late on the DTR.
+     */
+    public int $lateGraceMinutes;
+
     /** Window for collapsing accidental double-punches from the scanner. */
     public int $biometricDedupeMinutes;
 

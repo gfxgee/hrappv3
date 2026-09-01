@@ -134,7 +134,13 @@ class DtrService
                 $hours = max(0.0, round($gross >= $this->settings->lunchThresholdHours ? $gross - $this->settings->lunchHours : $gross, 2));
 
                 if ($scheduledIn !== null) {
-                    $late = $in->greaterThan($scheduledIn) ? (int) round(abs($scheduledIn->diffInMinutes($in))) : 0;
+                    $minutesLate = $in->greaterThan($scheduledIn)
+                        ? (int) round(abs($scheduledIn->diffInMinutes($in)))
+                        : 0;
+
+                    // Arriving within the grace period is not late at all; past
+                    // it, the full tardiness from the scheduled start counts.
+                    $late = $minutesLate > $this->settings->lateGraceMinutes ? $minutesLate : 0;
                 }
 
                 if ($scheduledOut !== null) {

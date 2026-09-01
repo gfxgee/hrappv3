@@ -291,3 +291,57 @@ it('breaks overtime down per status while totalling only approved hours', functi
         ->and($byStatus->get('forapproval')['hours'])->toBe(2.0) // 1.5 + 0.5 summed
         ->and($byStatus->has('cancelled'))->toBeFalse();
 });
+
+it('does not mark an employee late within the grace period', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    // 4 minutes past a 10:00 start, well inside the 15-minute default grace.
+    logAt($user, 'clockin', '2026-06-01 10:04:00');
+    logAt($user, 'clockout', '2026-06-01 18:43:00');
+
+    $data = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'));
+
+    expect($data['rows'][0]['late'])->toBe(0)
+        ->and($data['totals']['late'])->toBe(0);
+});
+
+it('counts the full lateness once the grace period is exceeded', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    // 20 minutes late — past the 15-minute grace, so the whole 20 counts.
+    logAt($user, 'clockin', '2026-06-01 10:20:00');
+    logAt($user, 'clockout', '2026-06-01 18:00:00');
+
+    $data = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'));
+
+    expect($data['rows'][0]['late'])->toBe(20);
+});
+
+it('respects a configured grace period', function () {
+    app(GeneralSettings::class)->fill(['lateGraceMinutes' => 0])->save();
+
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-06-01 10:04:00');
+    logAt($user, 'clockout', '2026-06-01 18:00:00');
+
+    $data = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'));
+
+    // With no grace configured, the same arrival is 4 minutes late.
+    expect($data['rows'][0]['late'])->toBe(4);
+});
+
+it('exactly at the grace boundary is still not late', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-06-01 10:15:00');
+    logAt($user, 'clockout', '2026-06-01 18:00:00');
+
+    $data = app(DtrService::class)->build($user, Carbon::parse('2026-06-01'), Carbon::parse('2026-06-01'));
+
+    expect($data['rows'][0]['late'])->toBe(0);
+});
