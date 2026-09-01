@@ -55,7 +55,7 @@ class ManageGeneralSettings extends SettingsPage
                             ->numeric()->minValue(0)->maxValue(24)->step(0.25)->suffix('hours')->required(),
                         TextInput::make('lateGraceMinutes')
                             ->label('Late grace period')
-                            ->helperText('Clocking in within this many minutes of the scheduled start is not counted late on the DTR. Past it, the full lateness counts.')
+                            ->helperText('Deducted from any tardiness on the DTR — arriving 44 minutes late with a 15-minute grace records 29 minutes.')
                             ->numeric()->minValue(0)->maxValue(120)->suffix('minutes')->required(),
                         TextInput::make('standardWorkingHours')
                             ->label('Standard working hours / day')

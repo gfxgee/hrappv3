@@ -52,8 +52,8 @@ class GeneralSettings extends Settings
     */
 
     /**
-     * Minutes an employee may clock in past their scheduled start without being
-     * marked late on the DTR.
+     * Minutes deducted from a late clock-in before it counts as tardiness on
+     * the DTR.
      */
     public int $lateGraceMinutes;
 

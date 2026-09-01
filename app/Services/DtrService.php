@@ -138,9 +138,9 @@ class DtrService
                         ? (int) round(abs($scheduledIn->diffInMinutes($in)))
                         : 0;
 
-                    // Arriving within the grace period is not late at all; past
-                    // it, the full tardiness from the scheduled start counts.
-                    $late = $minutesLate > $this->settings->lateGraceMinutes ? $minutesLate : 0;
+                    // The grace period is deducted from the tardiness, so only
+                    // the minutes beyond it count (44 late - 15 grace = 29).
+                    $late = max(0, $minutesLate - $this->settings->lateGraceMinutes);
                 }
 
                 if ($scheduledOut !== null) {

@@ -6,8 +6,8 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        // Minutes an employee may clock in past their scheduled start without
-        // being marked late on the DTR.
+        // Minutes deducted from a late clock-in before it counts as tardiness
+        // on the DTR.
         $this->migrator->add('general.lateGraceMinutes', 15);
     }
 };
