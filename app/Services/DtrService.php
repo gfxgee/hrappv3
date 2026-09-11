@@ -17,9 +17,9 @@ use Illuminate\Support\Collection;
  * Builds a Daily Time Record (DTR) for an employee over a date range from
  * their attendance logs, schedule, approved overtime, leave, and holidays.
  *
- * Assumes a single clock-in / clock-out per day; a lunch break (configurable
- * via settings) is deducted from worked hours once the gross span exceeds the
- * threshold.
+ * A day may hold several shifts; worked hours are summed across all of them and
+ * a lunch break (configurable via settings) is deducted once from the day's
+ * total, when it exceeds the threshold.
  */
 class DtrService
 {
@@ -98,11 +98,13 @@ class DtrService
             $dayShifts = $shiftsByInDate->get($key);
 
             if ($dayShifts !== null) {
-                // First clock-in of the day starts the row; the last shift's
-                // clock-out ends it (which may land after midnight, or be null
-                // while the shift is still open).
+                // First clock-in of the day starts the row; the last *closed*
+                // shift's clock-out ends it (which may land after midnight). A
+                // trailing shift that is still open — or a stray punch that
+                // opened one — leaves the day's clock-out intact rather than
+                // blanking the whole row.
                 $in = $dayShifts->first()['in'];
-                $out = $dayShifts->last()['out'];
+                $out = $dayShifts->last(fn (array $shift): bool => $shift['out'] !== null)['out'] ?? null;
             } else {
                 // A clock-out with no matching clock-in (malformed data) still
                 // surfaces on its date so the day reads as Present, as before.
@@ -119,33 +121,45 @@ class DtrService
                 $scheduledOut = $scheduledOut->addDay();
             }
 
-            $hours = 0.0;
             $late = 0;
             $undertime = 0;
 
-            if ($in && $out) {
-                // Clamp the worked span to the scheduled window so early
-                // clock-ins and late clock-outs (overtime) don't change paid
-                // regular hours. With no schedule set, the raw span is used.
-                $start = $scheduledIn !== null ? $in->copy()->max($scheduledIn) : $in;
-                $end = $scheduledOut !== null ? $out->copy()->min($scheduledOut) : $out;
+            // Gross worked time is summed over every closed shift of the day, so
+            // a day punched as several shifts is paid for what was actually
+            // worked instead of the raw first-in → last-out span.
+            $gross = 0.0;
 
-                $gross = $end->greaterThan($start) ? abs($start->diffInMinutes($end)) / 60 : 0.0;
-                $hours = max(0.0, round($gross >= $this->settings->lunchThresholdHours ? $gross - $this->settings->lunchHours : $gross, 2));
-
-                if ($scheduledIn !== null) {
-                    $minutesLate = $in->greaterThan($scheduledIn)
-                        ? (int) round(abs($scheduledIn->diffInMinutes($in)))
-                        : 0;
-
-                    // The grace period is deducted from the tardiness, so only
-                    // the minutes beyond it count (44 late - 15 grace = 29).
-                    $late = max(0, $minutesLate - $this->settings->lateGraceMinutes);
+            foreach ($dayShifts ?? [] as $shift) {
+                if ($shift['out'] === null) {
+                    continue;
                 }
 
-                if ($scheduledOut !== null) {
-                    $undertime = $out->lessThan($scheduledOut) ? (int) round(abs($out->diffInMinutes($scheduledOut))) : 0;
+                // Clamp each span to the scheduled window so early clock-ins and
+                // late clock-outs (overtime) don't change paid regular hours.
+                // With no schedule set, the raw span is used.
+                $start = $scheduledIn !== null ? $shift['in']->copy()->max($scheduledIn) : $shift['in'];
+                $end = $scheduledOut !== null ? $shift['out']->copy()->min($scheduledOut) : $shift['out'];
+
+                if ($end->greaterThan($start)) {
+                    $gross += abs($start->diffInMinutes($end)) / 60;
                 }
+            }
+
+            // Lunch comes off the day's total once, never per shift.
+            $hours = max(0.0, round($gross >= $this->settings->lunchThresholdHours ? $gross - $this->settings->lunchHours : $gross, 2));
+
+            if ($in !== null && $scheduledIn !== null) {
+                $minutesLate = $in->greaterThan($scheduledIn)
+                    ? (int) round(abs($scheduledIn->diffInMinutes($in)))
+                    : 0;
+
+                // The grace period is deducted from the tardiness, so only
+                // the minutes beyond it count (44 late - 15 grace = 29).
+                $late = max(0, $minutesLate - $this->settings->lateGraceMinutes);
+            }
+
+            if ($in !== null && $out !== null && $scheduledOut !== null) {
+                $undertime = $out->lessThan($scheduledOut) ? (int) round(abs($out->diffInMinutes($scheduledOut))) : 0;
             }
 
             /** @var Collection<int, OverTimeRequest> $dayOvertimes */

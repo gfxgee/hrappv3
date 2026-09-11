@@ -2,6 +2,7 @@
 
 use App\Models\AttendanceLog;
 use App\Models\User;
+use App\Models\ZktecoAttendance;
 
 const WEBHOOK_URL = '/api/attendance/biometric-punch';
 const WEBHOOK_SECRET = 'test-webhook-secret';
@@ -163,4 +164,64 @@ it('skips an unknown employee without erroring', function () {
         ->assertJson(['status' => 'unmatched']);
 
     expect(AttendanceLog::query()->count())->toBe(0);
+});
+
+it('skips a SharePoint item we created ourselves by mirroring a scan', function () {
+    $user = User::factory()->create(['email' => 'vevien@digitalfeet.com']);
+
+    // The scanner pushed this punch directly and SyncAttendanceLogFromScan
+    // logged it at its true scan time; MirrorPunchToTimekeeping then created
+    // Timekeeping item 3769 and recorded that on the scan.
+    ZktecoAttendance::create([
+        'sn' => 'TEST123',
+        'bio_metric_id' => 141,
+        'scanned_at' => '2026-09-10 18:27:12',
+        'status1' => 1,
+        'timekeeping_item_id' => '3769',
+    ]);
+
+    // The flow posts that item back hours later, stamped with the mirror's
+    // clock rather than the scan's — the exact shape of the buffered-scanner
+    // burst that put phantom 00:07 punches on everyone's DTR.
+    postPunch(punchPayload(['id' => 3769, 'title' => 'TIME-OUT', 'punched_at' => '2026-09-11T00:07:45Z']))
+        ->assertOk()
+        ->assertJson(['status' => 'mirrored']);
+
+    expect(AttendanceLog::query()->count())->toBe(0);
+});
+
+it('still ingests a SharePoint item that did not come from our mirror', function () {
+    User::factory()->create(['email' => 'vevien@digitalfeet.com']);
+
+    // A scan we mirrored, but under a different item id.
+    ZktecoAttendance::create([
+        'sn' => 'TEST123',
+        'bio_metric_id' => 141,
+        'scanned_at' => '2026-09-10 18:27:12',
+        'timekeeping_item_id' => '3769',
+    ]);
+
+    postPunch(punchPayload(['id' => 4242, 'title' => 'TIME-IN', 'punched_at' => '2026-09-11T08:01:00Z']))
+        ->assertOk()
+        ->assertJson(['status' => 'created', 'type' => 'clockin']);
+
+    expect(AttendanceLog::query()->count())->toBe(1);
+});
+
+it('does not treat an unmirrored scan as a match for a null item id', function () {
+    User::factory()->create(['email' => 'vevien@digitalfeet.com']);
+
+    // Scans that were never mirrored leave timekeeping_item_id null; that must
+    // not swallow punches arriving from SharePoint.
+    ZktecoAttendance::create([
+        'sn' => 'TEST123',
+        'bio_metric_id' => 141,
+        'scanned_at' => '2026-09-10 18:27:12',
+    ]);
+
+    postPunch(punchPayload(['id' => 5555]))
+        ->assertOk()
+        ->assertJson(['status' => 'created']);
+
+    expect(AttendanceLog::query()->count())->toBe(1);
 });

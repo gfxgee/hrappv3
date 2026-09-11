@@ -14,9 +14,9 @@ class BiometricPunchController extends Controller
     /**
      * Ingest a single biometric punch from the SharePoint/Power Automate flow.
      *
-     * Always responds 200 for handled outcomes (created / duplicate / unmatched)
-     * so the flow does not retry punches that can't be applied (e.g. an unknown
-     * employee). Bad secret → 401 (middleware); malformed body → 422.
+     * Always responds 200 for handled outcomes (created / duplicate / mirrored /
+     * unmatched) so the flow does not retry punches that can't be applied (e.g.
+     * an unknown employee). Bad secret → 401 (middleware); malformed body → 422.
      */
     public function __invoke(BiometricPunchRequest $request): JsonResponse
     {

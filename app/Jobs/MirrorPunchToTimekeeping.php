@@ -51,6 +51,14 @@ class MirrorPunchToTimekeeping implements ShouldQueue
             return;
         }
 
-        $service->recordPunch($employee['email'], $this->attendance);
+        $itemId = $service->recordPunch($employee['email'], $this->attendance);
+
+        // Remember which Timekeeping item this scan produced. The Power Automate
+        // flow posts that item back to the punch webhook, where this marker
+        // identifies it as our own mirror rather than an independent punch —
+        // {@see \App\Services\AttendancePunchService::record()}.
+        if ($itemId !== null) {
+            $this->attendance->update(['timekeeping_item_id' => $itemId]);
+        }
     }
 }

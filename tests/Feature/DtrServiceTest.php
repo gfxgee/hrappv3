@@ -358,3 +358,53 @@ it('exactly at the grace boundary is still not late', function () {
 
     expect($data['rows'][0]['late'])->toBe(0);
 });
+
+it('keeps the day\'s clock-out when a later punch opens a new shift', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    // A stray after-midnight clock-in (e.g. a phantom from the SharePoint
+    // round-trip) opened the day, the real shift closed at 18:00, and a final
+    // punch re-opened a shift that is never closed.
+    logAt($user, 'clockin', '2026-09-11 00:07:00');
+    logAt($user, 'clockout', '2026-09-11 18:00:00');
+    logAt($user, 'clockin', '2026-09-11 18:01:00');
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-09-11'), Carbon::parse('2026-09-11'))['rows'][0];
+
+    expect($row['time_in'])->toBe('12:07 AM')
+        ->and($row['time_out'])->toBe('06:00 PM')  // not blanked by the open shift
+        ->and($row['hours'])->toBe(7.0)            // 10:00–18:00 clamped, less lunch
+        ->and($row['undertime'])->toBe(0);
+});
+
+it('sums worked hours across several shifts in one day', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    // Two short shifts with a long gap: 1h + 1h worked, not the 7h span.
+    logAt($user, 'clockin', '2026-09-11 10:00:00');
+    logAt($user, 'clockout', '2026-09-11 11:00:00');
+    logAt($user, 'clockin', '2026-09-11 16:00:00');
+    logAt($user, 'clockout', '2026-09-11 17:00:00');
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-09-11'), Carbon::parse('2026-09-11'))['rows'][0];
+
+    expect($row['time_in'])->toBe('10:00 AM')
+        ->and($row['time_out'])->toBe('05:00 PM')
+        ->and($row['hours'])->toBe(2.0);  // below the lunch threshold, nothing deducted
+});
+
+it('records lateness on a shift that was never clocked out', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['time_in' => '10:00', 'time_out' => '18:00']);
+
+    logAt($user, 'clockin', '2026-09-11 10:30:00'); // 30 late, less 15 grace
+
+    $row = app(DtrService::class)->build($user, Carbon::parse('2026-09-11'), Carbon::parse('2026-09-11'))['rows'][0];
+
+    expect($row['time_out'])->toBeNull()
+        ->and($row['hours'])->toBe(0.0)
+        ->and($row['late'])->toBe(15)
+        ->and($row['undertime'])->toBe(0); // no clock-out to measure against
+});

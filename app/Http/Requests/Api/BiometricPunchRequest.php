@@ -43,15 +43,19 @@ class BiometricPunchRequest extends FormRequest
 
     /**
      * The validated punch, normalised for {@see AttendancePunchService}.
-     * The SharePoint id is namespaced and the timestamp is converted to the app's
-     * timezone (SharePoint "Created" is UTC).
+     * The SharePoint id is namespaced for `external_id` and kept raw as
+     * `source_id` (which is what a mirrored scan records), and the timestamp is
+     * converted to the app's timezone (SharePoint "Created" is UTC).
      *
-     * @return array{external_id: string, title: string, email: string, punched_at: Carbon}
+     * @return array{external_id: string, source_id: string, title: string, email: string, punched_at: Carbon}
      */
     public function toPunch(): array
     {
+        $sourceId = (string) $this->input('id');
+
         return [
-            'external_id' => 'sharepoint:'.$this->input('id'),
+            'external_id' => 'sharepoint:'.$sourceId,
+            'source_id' => $sourceId,
             'title' => (string) $this->input('title'),
             'email' => (string) $this->input('email'),
             'punched_at' => Carbon::parse($this->input('punched_at'))->setTimezone(config('app.timezone')),
