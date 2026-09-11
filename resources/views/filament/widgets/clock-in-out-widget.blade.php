@@ -3,10 +3,13 @@
     $clockIn = $this->getClockInLog();
     $clockOut = $this->getClockOutLog();
     $elapsed = $this->getElapsedHuman();
+    $isOvertimeShift = $this->isOvertimeShift();
 
-    $subtitle = match ($status) {
-        'in_progress' => 'Shift in progress',
-        'done' => 'Shift complete',
+    $subtitle = match (true) {
+        $status === 'in_progress' && $isOvertimeShift => 'Overtime shift in progress',
+        $status === 'in_progress' => 'Shift in progress',
+        $status === 'done' && $isOvertimeShift => 'Overtime shift complete',
+        $status === 'done' => 'Shift complete',
         default => now()->format('l, F j, Y'),
     };
 @endphp
@@ -49,8 +52,20 @@
             </div>
 
             {{-- Action --}}
-            <div class="flex items-center justify-end gap-3">
+            <div class="flex flex-wrap items-center justify-end gap-3">
                 @if ($status === 'in_progress')
+                    {{-- OT Clock Out is an alternative to Clock Out: it files
+                         the overtime request and clocks out in one step. --}}
+                    <x-filament::button
+                        wire:click="mountAction('otClockOut')"
+                        icon="heroicon-o-clock"
+                        size="lg"
+                        color="info"
+                        outlined
+                    >
+                        OT Clock Out
+                    </x-filament::button>
+
                     <x-filament::button
                         wire:click="clockOut"
                         wire:confirm="Clock out now?"
@@ -66,6 +81,18 @@
                         Shift complete — see you next shift
                     </span>
                 @else
+                    {{-- OT Clock In is an alternative to Clock In, not an extra
+                         session: it files the overtime request and clocks in. --}}
+                    <x-filament::button
+                        wire:click="mountAction('otClockIn')"
+                        icon="heroicon-o-clock"
+                        size="lg"
+                        color="info"
+                        outlined
+                    >
+                        OT Clock In
+                    </x-filament::button>
+
                     <x-filament::button
                         wire:click="clockIn"
                         icon="heroicon-o-play-circle"
@@ -78,4 +105,8 @@
             </div>
         </div>
     </x-filament::section>
+
+    {{-- Outside the polled section: a poll landing mid-typing would morph the
+         modal subtree and can steal focus from the reason textarea. --}}
+    <x-filament-actions::modals />
 </x-filament-widgets::widget>

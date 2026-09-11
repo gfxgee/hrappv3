@@ -2,12 +2,23 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enum\AttendanceStatus;
+use App\Filament\Pages\FileOverTimeRequest;
 use App\Models\AttendanceLog;
+use App\Models\OverTimeRequest;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Widgets\Widget;
 
-class ClockInOutWidget extends Widget
+class ClockInOutWidget extends Widget implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
+    use InteractsWithSchemas;
+
     protected string $view = 'filament.widgets.clock-in-out-widget';
 
     /**
@@ -53,9 +64,122 @@ class ClockInOutWidget extends Widget
             ->send();
     }
 
+    /**
+     * Clock in for an overtime shift: the same punch as a normal clock-in, with
+     * the overtime request filed in the same step so the employee doesn't have
+     * to visit the Overtime Request Form separately.
+     */
+    public function otClockInAction(): Action
+    {
+        return Action::make('otClockIn')
+            ->label('OT Clock In')
+            ->icon('heroicon-o-clock')
+            ->color('info')
+            ->modalHeading('Clock in for overtime')
+            ->modalDescription('Files your overtime request and clocks you in.')
+            ->modalSubmitActionLabel('File & clock in')
+            ->schema(FileOverTimeRequest::overtimeHoursAndReasonFields())
+            ->action(function (array $data): void {
+                // Same one-shift-per-day rule as the normal clock-in.
+                if (! $this->canClockIn()) {
+                    return;
+                }
+
+                $request = $this->fileOvertime($data, today()->toDateString());
+
+                AttendanceLog::create([
+                    'user_id' => auth()->id(),
+                    'type' => 'clockin',
+                    'device' => 'web',
+                    'remarks' => "OT shift — overtime request #{$request->id}",
+                ]);
+
+                Notification::make()
+                    ->success()
+                    ->title('Clocked in for overtime')
+                    ->body('Your overtime request has been sent for approval.')
+                    ->send();
+            });
+    }
+
+    /**
+     * Clock out of an overtime shift: the mirror of OT Clock In, for the usual
+     * case where the overtime wasn't known about until the end of the day. The
+     * punch is an ordinary clock-out; the request is filed alongside it.
+     */
+    public function otClockOutAction(): Action
+    {
+        return Action::make('otClockOut')
+            ->label('OT Clock Out')
+            ->icon('heroicon-o-clock')
+            ->color('info')
+            ->modalHeading('Clock out with overtime')
+            ->modalDescription('Files your overtime request and clocks you out.')
+            ->modalSubmitActionLabel('File & clock out')
+            ->schema(FileOverTimeRequest::overtimeHoursAndReasonFields())
+            ->action(function (array $data): void {
+                // Same rule as the normal clock-out: an open shift is required.
+                if (! $this->canClockOut()) {
+                    return;
+                }
+
+                // File against the day the shift started, so a night shift
+                // closing after midnight lands on the right DTR row.
+                $request = $this->fileOvertime(
+                    $data,
+                    $this->getClockInLog()?->created_at->toDateString() ?? today()->toDateString(),
+                );
+
+                AttendanceLog::create([
+                    'user_id' => auth()->id(),
+                    'type' => 'clockout',
+                    'device' => 'web',
+                    'remarks' => "OT — overtime request #{$request->id}",
+                ]);
+
+                Notification::make()
+                    ->success()
+                    ->title('Clocked out with overtime')
+                    ->body('Your overtime request has been sent for approval.')
+                    ->send();
+            });
+    }
+
+    /**
+     * File the overtime request that accompanies an OT punch.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function fileOvertime(array $data, string $requestDate): OverTimeRequest
+    {
+        return OverTimeRequest::create([
+            'user_id' => auth()->id(),
+            'request_date' => $requestDate,
+            'hours' => $data['hours'],
+            'reason' => $data['reason'],
+            'status' => AttendanceStatus::FOR_APPROVAL->value,
+        ]);
+    }
+
+    /**
+     * Whether there is an open shift to close.
+     */
+    public function canClockOut(): bool
+    {
+        return $this->getClockInLog() !== null && $this->getClockOutLog() === null;
+    }
+
+    /**
+     * Whether the current shift was started with OT Clock In.
+     */
+    public function isOvertimeShift(): bool
+    {
+        return str_contains((string) $this->getClockInLog()?->remarks, 'OT shift');
+    }
+
     public function clockOut(): void
     {
-        if ($this->getClockInLog() === null || $this->getClockOutLog() !== null) {
+        if (! $this->canClockOut()) {
             return; // no open shift to close
         }
 
