@@ -72,6 +72,20 @@ class FileOverTimeRequest extends Page implements HasTable
                 ->label('Overtime date')
                 ->required()
                 ->default(today()),
+            ...static::overtimeHoursAndReasonFields(),
+        ];
+    }
+
+    /**
+     * The hours + reason fields on their own, for callers that already know the
+     * overtime date — the dashboard's OT clock-in modal, where the date is
+     * derived from the punch rather than chosen.
+     *
+     * @return array<Component>
+     */
+    public static function overtimeHoursAndReasonFields(): array
+    {
+        return [
             TextInput::make('hours')
                 ->required()
                 ->numeric()

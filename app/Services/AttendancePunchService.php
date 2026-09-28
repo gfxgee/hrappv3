@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AttendanceLog;
 use App\Models\User;
+use App\Models\ZktecoAttendance;
 use App\Settings\GeneralSettings;
 use Illuminate\Support\Carbon;
 
@@ -25,14 +26,24 @@ class AttendancePunchService
     public const OPEN_SHIFT_LOOKBACK_HOURS = 18;
 
     /**
-     * @param  array{external_id: string, title: string, email: string, punched_at: Carbon}  $punch
-     * @return array{status: 'created'|'duplicate'|'unmatched', type?: string, attendance_log_id?: int}
+     * @param  array{external_id: string, source_id?: string, title: string, email: string, punched_at: Carbon}  $punch
+     * @return array{status: 'created'|'duplicate'|'mirrored'|'unmatched', type?: string, attendance_log_id?: int}
      */
     public function record(array $punch): array
     {
         // Idempotent: a re-delivered or "modified" SharePoint item never logs twice.
         if (AttendanceLog::query()->where('external_id', $punch['external_id'])->exists()) {
             return ['status' => 'duplicate'];
+        }
+
+        // Our own mirror coming back: MirrorPunchToTimekeeping created this
+        // SharePoint item from a scan the scanner already pushed to us, and
+        // SyncAttendanceLogFromScan logged it at its true scan time. Re-logging
+        // it here would duplicate the punch — and at the wrong time, since the
+        // item carries the mirror's clock, not the scanner's. Items created in
+        // SharePoint by anything else still ingest normally.
+        if ($this->isOwnMirror($punch['source_id'] ?? null)) {
+            return ['status' => 'mirrored'];
         }
 
         $user = User::query()->whereRaw('LOWER(email) = ?', [mb_strtolower($punch['email'])])->first();
@@ -76,6 +87,23 @@ class AttendancePunchService
             'TIME-OUT' => 'clockout',
             default => $this->autoType($userId, $punchedAt),
         };
+    }
+
+    /**
+     * Whether this SharePoint item is one we created ourselves by mirroring a
+     * scan into the Timekeeping list. Unlike the time-window dedup below, this
+     * holds however long the round-trip took — including a scanner that
+     * buffered a day of punches offline and pushed them all at once.
+     */
+    protected function isOwnMirror(?string $sourceId): bool
+    {
+        if ($sourceId === null || $sourceId === '') {
+            return false;
+        }
+
+        return ZktecoAttendance::query()
+            ->where('timekeeping_item_id', $sourceId)
+            ->exists();
     }
 
     /**

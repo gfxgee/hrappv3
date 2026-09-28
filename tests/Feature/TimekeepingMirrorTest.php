@@ -161,3 +161,36 @@ it('refreshes the Active Employees map via the console command', function () {
     expect(app(ZktecoTimekeepingService::class)->findEmployeeByBiometricId(104))
         ->toMatchArray(['email' => 'romeo@example.com']);
 });
+
+it('records the created Timekeeping item id on the scan', function () {
+    seedEmployeeMap([104 => 'romeo@example.com']);
+    Http::fake([
+        'login.microsoftonline.com/*' => Http::response(['access_token' => 'tok', 'expires_in' => 3600]),
+        'graph.microsoft.com/*/lists?*' => Http::response(['value' => [['id' => 'list-1', 'displayName' => 'Timekeeping']]]),
+        'graph.microsoft.com/*/lists/*/items' => Http::response(['id' => '3769'], 201),
+    ]);
+    Http::preventStrayRequests();
+
+    $scan = ZktecoAttendance::create([
+        'sn' => 'OFFICIAL', 'bio_metric_id' => 104, 'scanned_at' => now(), 'status1' => 0,
+    ]);
+
+    (new MirrorPunchToTimekeeping($scan))->handle(app(ZktecoTimekeepingService::class));
+
+    // This marker is what lets the punch webhook recognise the round-trip of
+    // this item as our own mirror instead of an independent punch.
+    expect($scan->fresh()->timekeeping_item_id)->toBe('3769');
+});
+
+it('leaves the scan unmarked when a skipped mirror creates no item', function () {
+    seedEmployeeMap([999 => 'someone@example.com']); // 104 is not listed
+    Http::preventStrayRequests();
+
+    $scan = ZktecoAttendance::create([
+        'sn' => 'OFFICIAL', 'bio_metric_id' => 104, 'scanned_at' => now(), 'status1' => 0,
+    ]);
+
+    (new MirrorPunchToTimekeeping($scan))->handle(app(ZktecoTimekeepingService::class));
+
+    expect($scan->fresh()->timekeeping_item_id)->toBeNull();
+});

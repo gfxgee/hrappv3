@@ -50,12 +50,13 @@ class ZktecoTimekeepingService
     }
 
     /**
-     * Create one Timekeeping list item for a punch.
+     * Create one Timekeeping list item for a punch and return the new item's id,
+     * so the caller can record which SharePoint item this scan produced.
      *
      * @throws RuntimeException When the token, list, or item creation fails, so
      *                          the calling job can retry.
      */
-    public function recordPunch(string $email, ZktecoAttendance $attendance): void
+    public function recordPunch(string $email, ZktecoAttendance $attendance): ?string
     {
         $token = $this->accessToken();
 
@@ -91,6 +92,10 @@ class ZktecoTimekeepingService
 
             throw new RuntimeException('Timekeeping entry creation failed: '.$response->status());
         }
+
+        $itemId = $response->json('id');
+
+        return $itemId === null ? null : (string) $itemId;
     }
 
     /**
