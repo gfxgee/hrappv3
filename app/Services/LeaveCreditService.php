@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\UserData;
 use App\Settings\GeneralSettings;
 use App\Support\TimeOptions;
+use Carbon\CarbonImmutable;
+use Throwable;
 
 class LeaveCreditService
 {
@@ -107,10 +109,12 @@ class LeaveCreditService
     /**
      * Remaining credit (days) for a leave type, or null when untracked/unlimited.
      *
-     * Quotas are an annual allotment, so only usage from the current calendar
-     * year counts against the balance.
+     * Quotas are an annual allotment, so usage is measured within a single
+     * calendar year. Pass $year to check the balance of the year a request
+     * actually falls in — otherwise a request dated in another year would be
+     * checked against, and consume, nothing.
      */
-    public function remainingDays(User $user, LeaveType $type, ?int $excludeId = null): ?float
+    public function remainingDays(User $user, LeaveType $type, ?int $excludeId = null, ?int $year = null): ?float
     {
         $total = $this->totalCredit($user, $type);
 
@@ -118,6 +122,24 @@ class LeaveCreditService
             return null;
         }
 
-        return max($total - $this->usedDays($user, $type, $excludeId, now()->year), 0);
+        return max($total - $this->usedDays($user, $type, $excludeId, $year ?? now()->year), 0);
+    }
+
+    /**
+     * The calendar year a request's balance should be drawn from: the year its
+     * leave starts in, falling back to the current year for a blank/unusable
+     * date.
+     */
+    public function balanceYearFor(mixed $startDate): int
+    {
+        if (blank($startDate)) {
+            return now()->year;
+        }
+
+        try {
+            return CarbonImmutable::parse(is_string($startDate) ? $startDate : (string) $startDate)->year;
+        } catch (Throwable) {
+            return now()->year;
+        }
     }
 }

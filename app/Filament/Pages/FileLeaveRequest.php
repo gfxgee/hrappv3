@@ -118,7 +118,12 @@ class FileLeaveRequest extends Page implements HasTable
         }
 
         $service = app(LeaveCreditService::class);
-        $remaining = $service->remainingDays($user, $type, $record?->getKey());
+
+        // Draw from the balance of the year the leave falls in, not today's —
+        // otherwise a request dated in another year consumes nothing and could
+        // be filed without limit.
+        $year = $service->balanceYearFor($get('start_date'));
+        $remaining = $service->remainingDays($user, $type, $record?->getKey(), $year);
 
         // Untracked types (WFH, LWOP) have no quota.
         if ($remaining === null) {
@@ -134,10 +139,11 @@ class FileLeaveRequest extends Page implements HasTable
 
         if (round($requested, 2) > round($remaining, 2)) {
             $fail(sprintf(
-                'This request needs %s day(s), but you only have %s day(s) of %s remaining.',
+                'This request needs %s day(s), but you only have %s day(s) of %s remaining for %d.',
                 rtrim(rtrim(number_format($requested, 2), '0'), '.'),
                 rtrim(rtrim(number_format($remaining, 2), '0'), '.'),
                 $type->plainLabel(),
+                $year,
             ));
         }
     }

@@ -712,12 +712,14 @@ it('counts only the current calendar year against annual credits', function () {
         'time_out' => '18:00',
     ]);
 
-    // Prior-year usage (e.g. imported history) must not eat into this year's quota.
+    // Prior-year usage (e.g. imported history) must not eat into this year's
+    // quota. Pinned to a weekday so the day count doesn't depend on today's date.
+    $lastYearWeekday = now()->subYear()->startOfYear()->next(Carbon::MONDAY);
     LeaveRequest::factory()->for($user)->create([
         'request_type' => LeaveType::VACATION,
         'status' => AttendanceStatus::APPROVED,
-        'start_date' => now()->subYear()->toDateString(),
-        'end_date' => now()->subYear()->toDateString(),
+        'start_date' => $lastYearWeekday->toDateString(),
+        'end_date' => $lastYearWeekday->toDateString(),
     ]);
 
     // A current-year leave on a weekday counts as usual.
@@ -737,7 +739,7 @@ it('counts only the current calendar year against annual credits', function () {
     // Only the current-year day is counted; last year's is ignored.
     expect($credits[LeaveType::VACATION->label()]['used'])->toBe(1.0)
         ->and($credits[LeaveType::VACATION->label()]['remaining'])->toBe(9.0)
-        ->and($service->usedDays($user, LeaveType::VACATION, null, now()->subYear()->year))->toBe(1.0)
+        ->and($service->usedDays($user, LeaveType::VACATION, null, $lastYearWeekday->year))->toBe(1.0)
         ->and($service->remainingDays($user, LeaveType::VACATION))->toBe(9.0);
 });
 
@@ -763,4 +765,97 @@ it('excludes holidays when computing used credit', function () {
     // Mon–Fri minus the Wednesday holiday = 4 working days.
     expect($credits[LeaveType::VACATION->label()]['used'])->toBe(4.0)
         ->and($credits[LeaveType::VACATION->label()]['remaining'])->toBe(6.0);
+});
+
+it('draws the balance from the year the leave falls in, not the current year', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['vacation_leave' => 10, 'time_in' => '10:00', 'time_out' => '18:00']);
+
+    $nextYear = now()->year + 1;
+
+    // 19 working days already booked for next year.
+    LeaveRequest::factory()->for($user)->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => "{$nextYear}-03-02",
+        'end_date' => "{$nextYear}-03-27",
+    ]);
+
+    $service = app(LeaveCreditService::class);
+
+    // This year is untouched; next year is fully consumed.
+    expect($service->remainingDays($user, LeaveType::VACATION))->toBe(10.0)
+        ->and($service->remainingDays($user, LeaveType::VACATION, null, $nextYear))->toBe(0.0);
+});
+
+it('blocks filing leave in a future year once that year\'s credit is used up', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['vacation_leave' => 10, 'time_in' => '10:00', 'time_out' => '18:00']);
+    $this->actingAs($user);
+
+    $nextYear = now()->year + 1;
+
+    LeaveRequest::factory()->for($user)->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => "{$nextYear}-03-02",
+        'end_date' => "{$nextYear}-03-27",
+    ]);
+
+    // Before the fix this passed, because only the current year was checked.
+    Livewire::test(FileLeaveRequest::class)
+        ->fillForm([
+            'request_type' => LeaveType::VACATION->value,
+            'reason' => 'Another trip next year',
+            'start_date' => "{$nextYear}-04-06",
+            'end_date' => "{$nextYear}-04-08",
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['end_date']);
+
+    expect(LeaveRequest::where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('still allows a future-year request when that year has credit left', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['vacation_leave' => 10, 'time_in' => '10:00', 'time_out' => '18:00']);
+    $this->actingAs($user);
+
+    $nextYear = now()->year + 1;
+
+    Livewire::test(FileLeaveRequest::class)
+        ->fillForm([
+            'request_type' => LeaveType::VACATION->value,
+            'reason' => 'Planning ahead',
+            'start_date' => "{$nextYear}-04-06",
+            'end_date' => "{$nextYear}-04-08",
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(LeaveRequest::where('user_id', $user->id)->count())->toBe(1);
+});
+
+it('blocks a mobile request that exceeds the target year\'s credit', function () {
+    $user = User::factory()->create();
+    $user->userData()->create(['vacation_leave' => 10, 'time_in' => '10:00', 'time_out' => '18:00']);
+    $this->actingAs($user);
+
+    $nextYear = now()->year + 1;
+
+    LeaveRequest::factory()->for($user)->create([
+        'request_type' => LeaveType::VACATION,
+        'status' => AttendanceStatus::APPROVED,
+        'start_date' => "{$nextYear}-03-02",
+        'end_date' => "{$nextYear}-03-27",
+    ]);
+
+    $this->post(route('mobile.leave.store'), [
+        'request_type' => LeaveType::VACATION->value,
+        'start_date' => "{$nextYear}-04-06",
+        'end_date' => "{$nextYear}-04-08",
+        'reason' => 'Next year trip',
+    ])->assertSessionHasErrors('end_date');
+
+    expect(LeaveRequest::where('user_id', $user->id)->count())->toBe(1);
 });

@@ -49,7 +49,9 @@ class LeaveController extends Controller
      */
     private function assertWithinBalance($user, LeaveType $type, array $data): void
     {
-        $remaining = $this->credits->remainingDays($user, $type);
+        // Draw from the balance of the year the leave falls in, not today's.
+        $year = $this->credits->balanceYearFor($data['start_date'] ?? null);
+        $remaining = $this->credits->remainingDays($user, $type, null, $year);
 
         if ($remaining === null) {
             return;
@@ -63,7 +65,7 @@ class LeaveController extends Controller
 
         if ($requested > $remaining) {
             throw ValidationException::withMessages([
-                'end_date' => "You only have {$remaining} day(s) of {$type->plainLabel()} left, but requested {$requested}.",
+                'end_date' => "You only have {$remaining} day(s) of {$type->plainLabel()} left for {$year}, but requested {$requested}.",
             ]);
         }
     }
