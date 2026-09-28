@@ -67,6 +67,18 @@ class GeneralSettings extends Settings
     */
 
     /** GIFs fetched per page in the praise comment picker. */
+    /**
+     * Link to the company's telehealth / virtual doctor portal, offered when an
+     * employee checks in as sick. Blank hides the button.
+     */
+    public ?string $telehealthUrl;
+
+    /**
+     * Link employees can use to reach HR for wellbeing support, offered when
+     * they check in as stressed. Blank hides the button.
+     */
+    public ?string $hrSupportUrl;
+
     public int $praiseGifPerPage;
 
     public static function group(): string

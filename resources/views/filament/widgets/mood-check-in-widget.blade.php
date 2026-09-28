@@ -37,7 +37,8 @@
             el.querySelector('lottie-player')?.stop();
         },
     }"
-    x-on:mood-logged.window="open = false"
+    x-on:mood-logged.window="open = $event.detail?.followUp === true"
+    x-on:mood-follow-up-dismissed.window="open = false"
 >
     <style>
         /* Hide the animated player until the web component is defined, and show
@@ -45,6 +46,19 @@
         lottie-player:not(:defined) { display: none; }
         lottie-player:defined + .mood-fallback { display: none; }
         .mood-emoji-slot { display: inline-flex; align-items: center; justify-content: center; }
+
+        /* Box breathing: 4s inhale, 4s hold, 4s exhale, 4s hold. */
+        @keyframes moodBoxBreath {
+            0%   { transform: scale(0.55); }
+            25%  { transform: scale(1); }
+            50%  { transform: scale(1); }
+            75%  { transform: scale(0.55); }
+            100% { transform: scale(0.55); }
+        }
+        .mood-breath-circle { animation: moodBoxBreath 16s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+            .mood-breath-circle { animation: none; transform: scale(0.85); }
+        }
     </style>
 
     {{-- Floating bubble (bottom-right) — always available to (re)open the picker --}}
@@ -102,6 +116,119 @@
                 <x-filament::icon icon="heroicon-o-x-mark" class="h-5 w-5" />
             </button>
 
+            @php($panel = $this->followUpPanel())
+
+            @if ($panel)
+                {{-- Follow-up: a short, practical response to the mood just logged --}}
+                <div
+                    x-data="{
+                        seconds: 0,
+                        timer: null,
+                        breathing: {{ $panel['breathing'] ? 'true' : 'false' }},
+                        breakSeconds: {{ ($panel['break_minutes'] ?? 0) * 60 }},
+                        get total() { return this.breathing ? 60 : this.breakSeconds; },
+                        get phase() {
+                            return ['Breathe in', 'Hold', 'Breathe out', 'Hold'][Math.floor((this.seconds % 16) / 4)];
+                        },
+                        get remaining() {
+                            const left = Math.max(0, this.total - this.seconds);
+                            return String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+                        },
+                        get finished() { return this.seconds >= this.total; },
+                        start() {
+                            this.stop();
+                            this.seconds = 0;
+                            this.timer = setInterval(() => {
+                                this.seconds++;
+                                if (this.finished) { this.stop(); }
+                            }, 1000);
+                        },
+                        stop() {
+                            if (this.timer) { clearInterval(this.timer); this.timer = null; }
+                        },
+                        destroy() { this.stop(); },
+                    }"
+                    class="text-center"
+                >
+                    <div class="text-4xl">{{ $panel['emoji'] }}</div>
+                    <h2 id="mood-modal-title" class="mt-2 text-lg font-bold text-gray-950 dark:text-white">
+                        {{ $panel['title'] }}
+                    </h2>
+                    <p class="mx-auto mt-1 max-w-sm text-sm text-gray-500 dark:text-gray-400">
+                        {{ $panel['body'] }}
+                    </p>
+
+                    @if ($panel['breathing'])
+                        <div class="mt-6 flex h-40 items-center justify-center">
+                            <div
+                                class="flex h-32 w-32 items-center justify-center rounded-full bg-primary-100 ring-4 ring-primary-200 dark:bg-primary-500/20 dark:ring-primary-500/30"
+                                :class="timer ? 'mood-breath-circle' : ''"
+                            >
+                                <span
+                                    class="text-sm font-semibold text-primary-700 dark:text-primary-200"
+                                    x-text="timer ? phase : 'Ready'"
+                                ></span>
+                            </div>
+                        </div>
+                    @elseif ($panel['break_minutes'])
+                        <div
+                            class="mt-6 text-4xl font-bold tabular-nums text-gray-950 dark:text-white"
+                            x-text="(timer || finished) ? remaining : '{{ str_pad((string) $panel['break_minutes'], 2, '0', STR_PAD_LEFT) }}:00'"
+                        ></div>
+                    @endif
+
+                    @if ($panel['breathing'] || $panel['break_minutes'])
+                        <div class="mt-4 flex items-center justify-center gap-2">
+                            <button
+                                type="button"
+                                x-on:click="start()"
+                                x-show="! timer"
+                                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-500"
+                            >
+                                <span x-text="finished ? 'Go again' : 'Start'"></span>
+                            </button>
+                            <button
+                                type="button"
+                                x-on:click="stop()"
+                                x-show="timer"
+                                x-cloak
+                                class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
+                            >
+                                Stop
+                            </button>
+                        </div>
+                        <p x-show="finished" x-cloak class="mt-2 text-sm font-medium text-success-600 dark:text-success-400">
+                            Nicely done.
+                        </p>
+                    @endif
+
+                    @if ($panel['note'])
+                        <p class="mx-auto mt-5 max-w-sm rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400">
+                            {{ $panel['note'] }}
+                        </p>
+                    @endif
+
+                    <div class="mt-5 flex flex-col items-center gap-2">
+                        @if ($panel['link_url'] && $panel['link_label'])
+                            <a
+                                href="{{ $panel['link_url'] }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                            >
+                                {{ $panel['link_label'] }}
+                            </a>
+                        @endif
+                        <button
+                            type="button"
+                            wire:click="dismissFollowUp"
+                            class="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            @else
             <h2 id="mood-modal-title" class="text-lg font-bold text-gray-950 dark:text-white">
                 @if ($current)
                     You're feeling {{ $current->label() }} {{ $current->emoji() }}
@@ -144,6 +271,7 @@
                     </button>
                 @endforeach
             </div>
+            @endif
         </div>
     </div>
 </div>

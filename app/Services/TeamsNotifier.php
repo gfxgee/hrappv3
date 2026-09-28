@@ -157,6 +157,31 @@ class TeamsNotifier
         ]);
     }
 
+    /**
+     * Announce on Teams that an employee has checked in as sick on the
+     * moodometer, so the group chat knows they are offline today.
+     *
+     * Availability only — never a reason or diagnosis.
+     */
+    public function moodCheckedInSick(User $employee): void
+    {
+        $this->send([
+            'event' => 'mood.sick',
+            'category' => 'Wellbeing',
+            'icon' => '🤒',
+            'employee' => $employee->name,
+            'display_name' => $employee->displayName(),
+            'email' => $employee->email,
+            'photo' => $employee->getFilamentAvatarUrl(),
+            'department' => $employee->department?->name,
+            'request_date' => today()->toDateString(),
+            'text' => sprintf(
+                '🤒 %s has checked in as sick today and is offline.',
+                $employee->displayName(),
+            ),
+        ]);
+    }
+
     public function correctionFiled(AttendanceCorrectionRequest $request): void
     {
         $user = $request->user;

@@ -91,6 +91,20 @@ class ManageGeneralSettings extends SettingsPage
                             ->helperText('Window for collapsing accidental repeated scans from the biometric scanner.')
                             ->numeric()->minValue(0)->maxValue(120)->suffix('minutes')->required(),
                     ]),
+                Tab::make('Wellbeing')
+                    ->icon(Heroicon::OutlinedHeart)
+                    ->schema([
+                        TextInput::make('telehealthUrl')
+                            ->label('Telehealth link')
+                            ->helperText('Shown as a button when an employee checks in as sick. Leave blank to hide it.')
+                            ->url()
+                            ->maxLength(255),
+                        TextInput::make('hrSupportUrl')
+                            ->label('HR support link')
+                            ->helperText('Shown when an employee checks in as stressed, for reaching HR or a mental-health first-aider. Leave blank to hide it.')
+                            ->url()
+                            ->maxLength(255),
+                    ]),
                 Tab::make('Recognition')
                     ->icon(Heroicon::OutlinedHeart)
                     ->schema([
