@@ -1,6 +1,8 @@
 /.phpunit.cache
 /bootstrap/ssr
 /node_modules
+# Database admin tool - never commit, never ship to production.
+/public/adminer*.php
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot

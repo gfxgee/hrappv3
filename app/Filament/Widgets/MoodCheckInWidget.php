@@ -91,6 +91,7 @@ class MoodCheckInWidget extends Widget
      *     break_minutes: ?int,
      *     link_label: ?string,
      *     link_url: ?string,
+     *     link_opens_new_tab: bool,
      *     note: ?string,
      * }|null
      */
@@ -114,6 +115,7 @@ class MoodCheckInWidget extends Widget
                 'break_minutes' => 2,
                 'link_label' => 'Talk to HR',
                 'link_url' => $settings->hrSupportUrl,
+                'link_opens_new_tab' => self::opensNewTab($settings->hrSupportUrl),
                 'note' => null,
             ],
             Mood::TIRED => [
@@ -125,6 +127,7 @@ class MoodCheckInWidget extends Widget
                 'break_minutes' => 10,
                 'link_label' => null,
                 'link_url' => null,
+                'link_opens_new_tab' => false,
                 'note' => null,
             ],
             Mood::SICK => [
@@ -136,6 +139,7 @@ class MoodCheckInWidget extends Widget
                 'break_minutes' => null,
                 'link_label' => 'Start a teleconsult',
                 'link_url' => $settings->telehealthUrl,
+                'link_opens_new_tab' => self::opensNewTab($settings->telehealthUrl),
                 'note' => 'Your manager and HR have been notified that you’re offline today.',
             ],
             default => null,
@@ -166,5 +170,14 @@ class MoodCheckInWidget extends Widget
             'emoji' => $mood->emoji(),
             'lottie' => $mood->lottieCodepoint(),
         ], Mood::cases());
+    }
+
+    /**
+     * Only web links open in a new tab. A mailto:/tel: link hands off to
+     * another app, and target="_blank" would leave an empty tab behind.
+     */
+    private static function opensNewTab(?string $url): bool
+    {
+        return $url !== null && str_starts_with(strtolower($url), 'http');
     }
 }

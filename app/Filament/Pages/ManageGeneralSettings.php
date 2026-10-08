@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Rules\SupportLink;
 use App\Settings\GeneralSettings;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
@@ -96,13 +97,13 @@ class ManageGeneralSettings extends SettingsPage
                     ->schema([
                         TextInput::make('telehealthUrl')
                             ->label('Telehealth link')
-                            ->helperText('Shown as a button when an employee checks in as sick. Leave blank to hide it.')
-                            ->url()
+                            ->helperText('Shown as a button when an employee checks in as sick. Accepts https://…, mailto:… or tel:… — leave blank to hide it.')
+                            ->rule(new SupportLink)
                             ->maxLength(255),
                         TextInput::make('hrSupportUrl')
                             ->label('HR support link')
-                            ->helperText('Shown when an employee checks in as stressed, for reaching HR or a mental-health first-aider. Leave blank to hide it.')
-                            ->url()
+                            ->helperText('Shown when an employee checks in as stressed, for reaching HR or a mental-health first-aider. Accepts https://…, mailto:atheena@digitalfeet.com or tel:… — leave blank to hide it.')
+                            ->rule(new SupportLink)
                             ->maxLength(255),
                     ]),
                 Tab::make('Recognition')

@@ -212,8 +212,10 @@
                         @if ($panel['link_url'] && $panel['link_label'])
                             <a
                                 href="{{ $panel['link_url'] }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                @if ($panel['link_opens_new_tab'])
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                @endif
                                 class="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
                             >
                                 {{ $panel['link_label'] }}

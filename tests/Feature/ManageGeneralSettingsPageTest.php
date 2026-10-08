@@ -103,3 +103,23 @@ it('drives the coming up widget window from the setting', function () {
         ->and($labels)->toContain('Inside Window')
         ->and($labels)->not->toContain('Outside Window');
 });
+
+it('saves a mailto HR support link', function () {
+    $this->actingAs(settingsManager('hr'));
+
+    Livewire::test(ManageGeneralSettings::class)
+        ->fillForm(['hrSupportUrl' => 'mailto:atheena@digitalfeet.com'])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(app(GeneralSettings::class)->hrSupportUrl)->toBe('mailto:atheena@digitalfeet.com');
+});
+
+it('rejects an unsafe support link', function () {
+    $this->actingAs(settingsManager('hr'));
+
+    Livewire::test(ManageGeneralSettings::class)
+        ->fillForm(['hrSupportUrl' => 'javascript:alert(1)'])
+        ->call('save')
+        ->assertHasFormErrors(['hrSupportUrl']);
+});
