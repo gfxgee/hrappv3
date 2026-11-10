@@ -3,10 +3,12 @@
 use App\Http\Controllers\Api\BiometricPunchController;
 use App\Http\Controllers\Api\LeaveSummaryController;
 use App\Http\Controllers\Api\OnCallController;
+use App\Http\Controllers\Api\PortalController;
 use App\Http\Controllers\Api\TodaysLeavesController;
 use App\Http\Controllers\Api\TodaysWfhController;
 use App\Http\Controllers\Api\UpcomingController;
 use App\Http\Middleware\VerifyBiometricWebhookSecret;
+use App\Http\Middleware\VerifyPortalToken;
 use Illuminate\Support\Facades\Route;
 
 // Biometric attendance webhook — called by the SharePoint/Power Automate flow
@@ -36,6 +38,14 @@ Route::get('on-call/current', [OnCallController::class, 'current'])
     ->name('api.on-call.current');
 Route::get('on-call/today', [OnCallController::class, 'today'])
     ->name('api.on-call.today');
+
+// DF Portal: leaves and holidays in a range (?start=&end=, at most 62 days),
+// which the portal counts against the hours people log in monday. Guarded by
+// the portal's shared token in the X-Portal-Token header.
+Route::middleware(VerifyPortalToken::class)->prefix('portal')->group(function (): void {
+    Route::get('leaves', [PortalController::class, 'leaves'])->name('api.portal.leaves');
+    Route::get('holidays', [PortalController::class, 'holidays'])->name('api.portal.holidays');
+});
 
 // Upcoming events within a look-ahead window (?days= overrides the default).
 Route::get('upcoming/leaves', [UpcomingController::class, 'leaves'])->name('api.upcoming.leaves');

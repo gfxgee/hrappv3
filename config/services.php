@@ -54,6 +54,13 @@ return [
         'secret' => env('BIOMETRIC_WEBHOOK_SECRET'),
     ],
 
+    'portal' => [
+        // Shared token the DF Portal sends in the X-Portal-Token header to read
+        // leaves and holidays (/api/portal/*). The portal keeps the same value
+        // as HRAPP_TOKEN. Keep it in .env only.
+        'token' => env('PORTAL_API_TOKEN'),
+    ],
+
     'microsoft' => [
         'client_id' => env('MICROSOFT_CLIENT_ID'),
         'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
