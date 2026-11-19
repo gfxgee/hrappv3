@@ -65,8 +65,10 @@
                                             class="text-xs font-medium text-gray-500 hover:text-primary-600 dark:text-gray-400">
                                         Edit
                                     </button>
-                                    <button type="button" wire:click="deleteComment({{ $comment->id }})"
-                                            wire:confirm="Delete this comment?"
+                                    {{-- Filament modal, not wire:confirm: native
+                                         dialogs are ignored in the Teams tab. --}}
+                                    <button type="button"
+                                            wire:click="mountAction('confirmDeleteComment', { comment: {{ $comment->id }} })"
                                             class="text-xs font-medium text-gray-500 hover:text-danger-600 dark:text-gray-400">
                                         Delete
                                     </button>

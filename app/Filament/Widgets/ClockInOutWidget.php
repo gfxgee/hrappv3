@@ -177,6 +177,27 @@ class ClockInOutWidget extends Widget implements HasActions, HasSchemas
         return str_contains((string) $this->getClockInLog()?->remarks, 'OT shift');
     }
 
+    /**
+     * Confirm before closing the shift.
+     *
+     * A Filament modal rather than `wire:confirm`, which calls the browser's
+     * window.confirm(). Microsoft Teams renders the app in a sandboxed iframe
+     * that ignores native dialogs and reports them as cancelled, so there the
+     * button would silently do nothing at all.
+     */
+    public function confirmClockOutAction(): Action
+    {
+        return Action::make('confirmClockOut')
+            ->label('Clock Out')
+            ->icon('heroicon-o-stop-circle')
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalHeading('Clock out now?')
+            ->modalDescription('This closes your current shift.')
+            ->modalSubmitActionLabel('Clock out')
+            ->action(fn () => $this->clockOut());
+    }
+
     public function clockOut(): void
     {
         if (! $this->canClockOut()) {

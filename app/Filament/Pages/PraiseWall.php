@@ -539,6 +539,25 @@ class PraiseWall extends Page
     }
 
     /**
+     * Confirm before deleting a comment.
+     *
+     * A Filament modal rather than `wire:confirm`, which calls the browser's
+     * window.confirm(). Microsoft Teams renders the app in a sandboxed iframe
+     * that ignores native dialogs and reports them as cancelled, so there the
+     * button would silently do nothing at all.
+     */
+    public function confirmDeleteCommentAction(): Action
+    {
+        return Action::make('confirmDeleteComment')
+            ->requiresConfirmation()
+            ->modalHeading('Delete this comment?')
+            ->modalDescription('This cannot be undone.')
+            ->modalSubmitActionLabel('Delete')
+            ->color('danger')
+            ->action(fn (array $arguments) => $this->deleteComment((int) $arguments['comment']));
+    }
+
+    /**
      * Delete one of the current user's own comments.
      */
     public function deleteComment(int $commentId): void

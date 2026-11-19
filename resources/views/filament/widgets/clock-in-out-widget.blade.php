@@ -66,9 +66,11 @@
                         OT Clock Out
                     </x-filament::button>
 
+                    {{-- Confirms through a Filament modal, not wire:confirm:
+                         native dialogs are ignored inside the Microsoft Teams
+                         tab, which would make this button do nothing. --}}
                     <x-filament::button
-                        wire:click="clockOut"
-                        wire:confirm="Clock out now?"
+                        wire:click="mountAction('confirmClockOut')"
                         icon="heroicon-o-stop-circle"
                         size="lg"
                         color="warning"

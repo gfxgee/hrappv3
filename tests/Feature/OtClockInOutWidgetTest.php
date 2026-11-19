@@ -217,6 +217,11 @@ it('does not OT clock out after a normal clock-out', function () {
 
 it('files overtime against the shift start date when clocking out after midnight', function () {
     // Night shift: clocked in yesterday evening, clocking out at 2am today.
+    // The clock-out time has to be pinned: run this after 20:00 real time and
+    // the 20:00 clock-in falls outside the 24-hour active-shift window, so the
+    // widget sees no open shift and nothing is filed.
+    $this->travelTo(today()->setTime(2, 0));
+
     $in = AttendanceLog::create(['user_id' => auth()->id(), 'type' => 'clockin', 'device' => 'web']);
     $in->forceFill(['created_at' => now()->subDay()->setTime(20, 0)])->save();
 
