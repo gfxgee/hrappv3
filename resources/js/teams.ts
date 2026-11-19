@@ -96,8 +96,10 @@ async function signInWithPopup(root: HTMLElement): Promise<string | null> {
             width: 600,
             height: 650,
         });
-    } catch {
-        offerManualSignIn(root, 'Sign-in was cancelled.');
+    } catch (reason) {
+        // Teams rejects with its own code, or with whatever the popup passed
+        // to notifyFailure — which is the only account of what went wrong.
+        offerManualSignIn(root, describeAuthFailure(reason));
 
         return null;
     }
@@ -113,6 +115,24 @@ async function signInWithPopup(root: HTMLElement): Promise<string | null> {
     showError(root, result.message);
 
     return null;
+}
+
+/**
+ * Turn a rejection from the Teams auth popup into something actionable.
+ * Only a genuine user cancellation should read as one.
+ */
+function describeAuthFailure(reason: unknown): string {
+    const message = reason instanceof Error ? reason.message : String(reason ?? '');
+
+    if (message.includes('CancelledByUser')) {
+        return 'Sign-in was cancelled.';
+    }
+
+    if (message.includes('FailedToOpenWindow')) {
+        return 'Teams could not open the Microsoft sign-in window. If you are on the web app, allow pop-ups for Teams and try again.';
+    }
+
+    return message === '' ? 'Sign-in did not complete.' : message;
 }
 
 type SignInResult =
