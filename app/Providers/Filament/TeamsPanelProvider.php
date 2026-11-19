@@ -8,8 +8,6 @@ use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\FileAttendanceCorrection;
 use App\Filament\Pages\FileLeaveRequest;
 use App\Filament\Pages\FileOverTimeRequest;
-use App\Filament\Pages\LeaveCalendar;
-use App\Filament\Pages\OrgChart;
 use App\Filament\Pages\PraiseWall;
 use App\Filament\Pages\SuggestionBox;
 use App\Http\Middleware\AuthenticateTeamsTab;
@@ -20,7 +18,6 @@ use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationBuilder;
-use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -82,10 +79,13 @@ class TeamsPanelProvider extends PanelProvider
                 ->items([
                     ...Dashboard::getNavigationItems(),
                     ...DailyTimeRecord::getNavigationItems(),
-                    ...LeaveCalendar::getNavigationItems(),
+                    // Filing leave and overtime is what people open the tab
+                    // for, so both sit in the bar rather than behind a menu.
+                    ...FileLeaveRequest::getNavigationItems(),
+                    ...FileOverTimeRequest::getNavigationItems(),
+                    ...FileAttendanceCorrection::getNavigationItems(),
                     ...PraiseWall::getNavigationItems(),
                     ...SuggestionBox::getNavigationItems(),
-                    ...OrgChart::getNavigationItems(),
                     // The employee's own payslip (a Google Sheet). Teams opens
                     // an external link in the default browser, which is where
                     // a spreadsheet belongs anyway.
@@ -95,13 +95,6 @@ class TeamsPanelProvider extends PanelProvider
                         ->openUrlInNewTab()
                         ->visible(fn (): bool => filled(auth()->user()?->userData?->payslip_link)),
                 ])
-                // Collapsed into one dropdown: three form pages side by side
-                // would crowd a menu bar that has to fit a Teams tab.
-                ->group(NavigationGroup::make('Requests')->items([
-                    ...FileLeaveRequest::getNavigationItems(),
-                    ...FileOverTimeRequest::getNavigationItems(),
-                    ...FileAttendanceCorrection::getNavigationItems(),
-                ]))
             )
             // Hidden rather than removed: Filament adds the logout item itself,
             // so the key has to be claimed to suppress it.

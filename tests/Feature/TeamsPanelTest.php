@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\LeaveCalendar;
 use App\Http\Middleware\TeamsEmbed;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -8,6 +9,7 @@ use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Role;
 
 /**
  * The Microsoft Teams tab has its own panel at /teams-app. It serves the same
@@ -74,12 +76,28 @@ it('navigates to the employee self-service pages', function () {
     expect(teamsPanelNavigationLabels())
         ->toContain('Dashboard')
         ->toContain('Daily Time Record')
-        ->toContain('Praise Wall')
-        ->toContain('Suggestion Box')
-        ->toContain('Org Chart')
         ->toContain('File Leave')
         ->toContain('File Overtime')
-        ->toContain('File Attendance Correction');
+        ->toContain('File Attendance Correction')
+        ->toContain('Praise Wall')
+        ->toContain('Suggestion Box');
+});
+
+it('keeps the browsing pages out of the bar', function () {
+    // The Org Chart and the Leave Calendar are things you go and look at, not
+    // things you do in the half-minute someone spends in the tab. Both are
+    // still registered and reachable by URL.
+    $hr = User::factory()->create(['status' => 'active']);
+    $hr->assignRole(Role::findOrCreate('hr'));
+
+    $this->actingAs($hr->fresh());
+
+    expect(teamsPanelNavigationLabels())
+        ->not->toContain('Org Chart')
+        // The HR role clears the Leave Calendar's own access check, so its
+        // absence here is this panel's doing rather than a permission.
+        ->and(LeaveCalendar::canAccess())->toBeTrue()
+        ->and(teamsPanelNavigationLabels())->not->toContain('Leave Calendar');
 });
 
 it('keeps administration out of the tab navigation', function () {
@@ -97,15 +115,14 @@ it('keeps administration out of the tab navigation', function () {
         ->not->toContain('Import Attendance');
 });
 
-it('files the request forms under one menu so the bar stays short', function () {
+it('puts every item straight in the bar, with nothing behind a dropdown', function () {
     $this->actingAs(User::factory()->create(['status' => 'active']));
     Filament::setCurrentPanel('teams-app');
 
-    $requests = collect(Filament::getNavigation())
-        ->first(fn (NavigationGroup $group): bool => $group->getLabel() === 'Requests');
+    $labelled = collect(Filament::getNavigation())
+        ->filter(fn (NavigationGroup $group): bool => filled($group->getLabel()));
 
-    expect($requests)->not->toBeNull()
-        ->and($requests->getItems())->toHaveCount(3);
+    expect($labelled)->toBeEmpty();
 });
 
 it('registers resources so dashboard links still resolve', function () {
