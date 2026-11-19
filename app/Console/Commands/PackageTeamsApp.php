@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\TeamsManifestValidator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -39,6 +40,19 @@ class PackageTeamsApp extends Command
             [$appId, $appUrl, $host, (string) config('app.name'), $clientId],
             (string) file_get_contents($source.'/manifest.json'),
         );
+
+        // Teams only validates on upload, and reports one problem at a time.
+        $violations = (new TeamsManifestValidator)->violations(json_decode($manifest, true) ?? []);
+
+        if ($violations !== []) {
+            $this->components->error('The manifest does not match the Teams schema:');
+
+            foreach ($violations as $violation) {
+                $this->line('    '.$violation);
+            }
+
+            return self::FAILURE;
+        }
 
         $path = $this->outputPath();
 
