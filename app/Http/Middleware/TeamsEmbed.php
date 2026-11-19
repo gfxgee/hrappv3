@@ -57,7 +57,7 @@ class TeamsEmbed
 
     public function handle(Request $request, Closure $next): Response
     {
-        $embedded = $this->isEmbedded($request);
+        $embedded = self::isEmbedded($request);
 
         if ($embedded) {
             // Must happen before StartSession, which reads these per request.
@@ -83,10 +83,14 @@ class TeamsEmbed
      * The tab entry point is only ever opened by Teams, so it seeds the
      * marker; from then on the marker (or Sec-Fetch-Dest on browsers that
      * send it) identifies the embedded context.
+     *
+     * Public and static because the rest of the app needs the same answer:
+     * the Teams panel and the mobile app hide anything that would strand
+     * someone inside the tab, chiefly signing out.
      */
-    private function isEmbedded(Request $request): bool
+    public static function isEmbedded(Request $request): bool
     {
-        if ($request->is('teams', 'teams/*')) {
+        if ($request->is('teams', 'teams/*', 'teams-app', 'teams-app/*')) {
             return true;
         }
 

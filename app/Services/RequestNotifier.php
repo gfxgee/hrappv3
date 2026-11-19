@@ -19,6 +19,14 @@ use Illuminate\Support\Collection;
 /**
  * Sends in-app (database) notifications to the people who approve a request
  * whenever an employee files a leave or overtime request.
+ *
+ * The "Review" links are pinned to the admin panel. A stored notification
+ * keeps whatever URL was generated when it was sent, and Filament generates
+ * URLs for whichever panel is serving at the time — so without pinning, a
+ * request filed from the Microsoft Teams tab would send its approver to
+ * /teams-app and one filed from /admin would not. Approving is administration,
+ * so it always points at /admin; TeamsEmbed turns that back into the tab's own
+ * panel for anyone who follows the link from inside Teams.
  */
 class RequestNotifier
 {
@@ -53,7 +61,7 @@ class RequestNotifier
             ->actions([
                 Action::make('review')
                     ->label('Review')
-                    ->url(LeaveRequestResource::getUrl('edit', ['record' => $request]))
+                    ->url(LeaveRequestResource::getUrl('edit', ['record' => $request], panel: 'admin'))
                     ->markAsRead(),
             ])
             ->sendToDatabase($recipients, isEventDispatched: true);
@@ -89,7 +97,7 @@ class RequestNotifier
             ->actions([
                 Action::make('review')
                     ->label('Review')
-                    ->url(OverTimeRequestResource::getUrl('edit', ['record' => $request]))
+                    ->url(OverTimeRequestResource::getUrl('edit', ['record' => $request], panel: 'admin'))
                     ->markAsRead(),
             ])
             ->sendToDatabase($recipients, isEventDispatched: true);
@@ -125,7 +133,7 @@ class RequestNotifier
             ->actions([
                 Action::make('review')
                     ->label('Review')
-                    ->url(AttendanceCorrectionRequestResource::getUrl('index'))
+                    ->url(AttendanceCorrectionRequestResource::getUrl('index', panel: 'admin'))
                     ->markAsRead(),
             ])
             ->sendToDatabase($recipients, isEventDispatched: true);

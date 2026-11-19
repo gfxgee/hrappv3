@@ -19,7 +19,7 @@ function initials(name: string): string {
 }
 
 export default function MobileAccount({ name, email, department }: Props) {
-    const { auth } = usePage<{ auth: Auth }>().props;
+    const { auth, teamsTab } = usePage<{ auth: Auth; teamsTab?: boolean }>().props;
 
     return (
         <>
@@ -56,15 +56,19 @@ export default function MobileAccount({ name, email, department }: Props) {
                     </div>
                 </div>
 
-                <Link
-                    href={logout()}
-                    as="button"
-                    onClick={() => router.flushAll()}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-red-500 bg-white py-4 text-base font-bold text-red-600 active:scale-[0.99]"
-                >
-                    <LogOut className="size-5" />
-                    Log out
-                </Link>
+                {/* Inside a Microsoft Teams tab the Microsoft popup is the only
+                    way back in, so signing out here would just strand them. */}
+                {!teamsTab && (
+                    <Link
+                        href={logout()}
+                        as="button"
+                        onClick={() => router.flushAll()}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-3xl border-2 border-red-500 bg-white py-4 text-base font-bold text-red-600 active:scale-[0.99]"
+                    >
+                        <LogOut className="size-5" />
+                        Log out
+                    </Link>
+                )}
             </div>
         </>
     );

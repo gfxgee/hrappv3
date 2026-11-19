@@ -141,13 +141,15 @@ class TeamsSsoController
     }
 
     /**
-     * Phones get the mobile app, desktop gets the admin panel — the same split
-     * the rest of the app uses.
+     * Phones get the mobile app, the same split the rest of the app uses.
+     * Desktop gets the Teams panel rather than /admin: same pages, but chrome
+     * that suits a tab — top navigation, employee pages only, and no way to
+     * sign out and strand yourself inside the iframe.
      */
     private function destinationFor(Request $request): string
     {
         return MobileAudience::isMobile($request)
             ? route('mobile.home')
-            : url('/admin');
+            : url('/teams-app');
     }
 }

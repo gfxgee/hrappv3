@@ -56,6 +56,9 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // Inside a Microsoft Teams tab there is no way back in once you
+            // sign out, so the app hides anything that would end the session.
+            'teamsTab' => TeamsEmbed::isEmbedded($request),
         ];
     }
 

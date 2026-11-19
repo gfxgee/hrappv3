@@ -6,6 +6,7 @@ use App\Filament\Auth\EditProfile;
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ManageGeneralSettings;
+use App\Http\Middleware\KeepTeamsTabInItsPanel;
 use App\Http\Middleware\RedirectMobileToApp;
 use App\Http\Middleware\TeamsEmbed;
 use App\Models\User;
@@ -109,6 +110,10 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
                 RedirectMobileToApp::class,
+                // A link into /admin followed from inside a Teams tab lands in
+                // the Teams panel instead, so nobody ends up with the full
+                // admin chrome — logout included — inside the iframe.
+                KeepTeamsTabInItsPanel::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
