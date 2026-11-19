@@ -7,6 +7,7 @@ use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ManageGeneralSettings;
 use App\Http\Middleware\RedirectMobileToApp;
+use App\Http\Middleware\TeamsEmbed;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Http\Middleware\Authenticate;
@@ -93,6 +94,11 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationSort(99),
             ])
             ->middleware([
+                // Ahead of StartSession, and of EncryptCookies so its marker
+                // is read raw: inside a Microsoft Teams tab the panel is a
+                // cross-site iframe, and the session cookie is only sent there
+                // when it carries the attributes this sets.
+                TeamsEmbed::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,

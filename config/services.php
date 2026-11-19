@@ -46,6 +46,13 @@ return [
         // Who to @mention for approval when the employee's department has no
         // team leader set.
         'default_approver' => env('TEAMS_DEFAULT_APPROVER', 'gee@digitalfeet.com'),
+
+        // Identifier for the Teams *app package* (the tab employees install),
+        // which is distinct from the Entra application ID used to sign them in.
+        // A GUID, fixed for the life of the app: changing it makes Teams treat
+        // an upload as a brand new app instead of an update. Only read when
+        // building the package with `php artisan teams:package`.
+        'app_id' => env('TEAMS_APP_ID'),
     ],
 
     'biometric_webhook' => [

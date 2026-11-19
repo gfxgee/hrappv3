@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\TeamsEmbed;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,11 +19,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+        // TeamsEmbed reads its marker cookie before cookies are decrypted.
+        $middleware->encryptCookies(except: ['appearance', 'sidebar_state', TeamsEmbed::MARKER]);
 
         // The biometric scanner POSTs scans without a CSRF token.
         $middleware->validateCsrfTokens(except: [
             'iclock/*',
+        ]);
+
+        // Must run before StartSession: inside a Microsoft Teams tab the app
+        // is a cross-site iframe, so the session cookie needs different
+        // attributes to be sent at all.
+        $middleware->web(prepend: [
+            TeamsEmbed::class,
         ]);
 
         $middleware->web(append: [

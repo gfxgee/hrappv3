@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\MicrosoftSsoController;
+use App\Http\Controllers\Auth\TeamsSsoController;
 use App\Http\Controllers\DtrPdfController;
 use App\Http\Controllers\IclockController;
 use App\Http\Controllers\LandingController;
@@ -25,11 +26,25 @@ Route::get('dtr/pdf', DtrPdfController::class)
     ->middleware('auth')
     ->name('dtr.pdf');
 
-// Microsoft / Azure AD SSO for the admin panel login.
+// Microsoft / Azure AD SSO for the admin panel login. Also serves the Teams
+// tab's popup fallback, which passes ?teams_nonce= (see MicrosoftSsoController).
 Route::get('admin/auth/microsoft/redirect', [MicrosoftSsoController::class, 'redirect'])
     ->name('sso.microsoft.redirect');
 Route::get('admin/auth/microsoft/callback', [MicrosoftSsoController::class, 'callback'])
     ->name('sso.microsoft.callback');
+
+// Microsoft Teams tab. The entry page signs the employee in from their Teams
+// identity and then hands off to the normal app; TeamsEmbed makes the session
+// cookie usable inside the cross-site iframe Teams renders it in. Throttled
+// because both endpoints turn an unauthenticated credential into a session.
+Route::prefix('teams')->name('teams.')->group(function (): void {
+    Route::get('/', [TeamsSsoController::class, 'entry'])->name('entry');
+
+    Route::middleware('throttle:10,1')->group(function (): void {
+        Route::post('auth/token', [TeamsSsoController::class, 'token'])->name('auth.token');
+        Route::post('auth/claim', [TeamsSsoController::class, 'claim'])->name('auth.claim');
+    });
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // There is no standalone dashboard page: desktop lives in the Filament

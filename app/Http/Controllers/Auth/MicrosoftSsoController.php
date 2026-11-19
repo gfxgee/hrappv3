@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enum\UserStatus;
-use App\Models\User;
+use App\Support\SsoEmployee;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use Throwable;
@@ -16,32 +17,56 @@ use Throwable;
  *
  * Access is restricted to existing, active employees: the Microsoft email
  * must match a user already provisioned by HR. No accounts are auto-created.
+ *
+ * The same endpoints serve the Microsoft Teams tab, which opens them in a
+ * popup when silent sign-in is unavailable. That case cannot simply log the
+ * user in here: the popup is a top-level window, so its session cookie lands
+ * in a different jar from the partitioned one the embedded tab uses. Instead
+ * the popup hands a single-use code back to the tab, which redeems it.
  */
 class MicrosoftSsoController
 {
-    public function redirect(): RedirectResponse
+    /**
+     * Carries the tab's nonce across the Microsoft round trip, inside the
+     * popup's own session.
+     */
+    private const TEAMS_NONCE_SESSION_KEY = 'sso_teams_nonce';
+
+    public function redirect(Request $request): RedirectResponse
     {
+        $nonce = $request->string('teams_nonce')->toString();
+
+        if ($nonce !== '') {
+            $request->session()->put(self::TEAMS_NONCE_SESSION_KEY, $nonce);
+        } else {
+            $request->session()->forget(self::TEAMS_NONCE_SESSION_KEY);
+        }
+
         return Socialite::driver('microsoft')->redirect();
     }
 
-    public function callback(): RedirectResponse
+    public function callback(Request $request): RedirectResponse|View
     {
+        $teamsNonce = $request->session()->pull(self::TEAMS_NONCE_SESSION_KEY);
+
         try {
             $microsoftUser = Socialite::driver('microsoft')->user();
         } catch (Throwable $exception) {
             report($exception);
 
-            return $this->denied('We could not complete the Microsoft sign-in. Please try again.');
+            return $this->denied('We could not complete the Microsoft sign-in. Please try again.', $teamsNonce);
         }
 
-        $email = $microsoftUser->getEmail();
+        $user = SsoEmployee::resolve($microsoftUser->getEmail());
 
-        $user = filled($email)
-            ? User::query()->where('email', $email)->first()
-            : null;
+        if ($user === null) {
+            return $this->denied('No active employee account matches that Microsoft account.', $teamsNonce);
+        }
 
-        if ($user === null || $user->status !== UserStatus::ACTIVE->value) {
-            return $this->denied('No active employee account matches that Microsoft account.');
+        if (filled($teamsNonce)) {
+            return view('teams.popup', [
+                'code' => TeamsSsoController::issueClaim($user, $teamsNonce),
+            ]);
         }
 
         Auth::login($user, remember: true);
@@ -50,10 +75,15 @@ class MicrosoftSsoController
     }
 
     /**
-     * Flash a Filament notification and return the user to the panel login.
+     * Report the refusal the way the caller can act on it: a Teams popup
+     * closes itself with a message, a browser returns to the panel login.
      */
-    protected function denied(string $message): RedirectResponse
+    protected function denied(string $message, ?string $teamsNonce = null): RedirectResponse|View
     {
+        if (filled($teamsNonce)) {
+            return view('teams.popup', ['error' => $message]);
+        }
+
         Notification::make()
             ->danger()
             ->title('Sign-in denied')

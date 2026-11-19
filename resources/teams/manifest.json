@@ -1,0 +1,42 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.17",
+    "version": "1.0.0",
+    "id": "{{APP_ID}}",
+    "packageName": "com.digitalfeet.hrapp",
+    "developer": {
+        "name": "Digital Feet",
+        "websiteUrl": "{{APP_URL}}",
+        "privacyUrl": "{{APP_URL}}/privacy",
+        "termsOfUseUrl": "{{APP_URL}}/terms"
+    },
+    "icons": {
+        "color": "color.png",
+        "outline": "outline.png"
+    },
+    "name": {
+        "short": "{{APP_NAME}}",
+        "full": "{{APP_NAME}}"
+    },
+    "description": {
+        "short": "File leave, log attendance and see who is out today.",
+        "full": "Your HR workspace inside Teams. File leave and overtime, clock in and out, check your attendance and leave balances, and see who is on leave, working from home or on call today. You are signed in automatically with your work account."
+    },
+    "accentColor": "#592BD7",
+    "staticTabs": [
+        {
+            "entityId": "hrapp.home",
+            "name": "{{APP_NAME}}",
+            "contentUrl": "{{APP_URL}}/teams",
+            "websiteUrl": "{{APP_URL}}",
+            "scopes": ["personal"],
+            "context": ["personalTab"]
+        }
+    ],
+    "permissions": ["identity"],
+    "validDomains": ["{{APP_HOST}}"],
+    "webApplicationInfo": {
+        "id": "{{CLIENT_ID}}",
+        "resource": "api://{{APP_HOST}}/{{CLIENT_ID}}"
+    }
+}
