@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\TeamsIconValidator;
 use App\Support\TeamsManifestValidator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -42,10 +43,13 @@ class PackageTeamsApp extends Command
         );
 
         // Teams only validates on upload, and reports one problem at a time.
-        $violations = (new TeamsManifestValidator)->violations(json_decode($manifest, true) ?? []);
+        $violations = [
+            ...(new TeamsManifestValidator)->violations(json_decode($manifest, true) ?? []),
+            ...(new TeamsIconValidator)->violations($source),
+        ];
 
         if ($violations !== []) {
-            $this->components->error('The manifest does not match the Teams schema:');
+            $this->components->error('The package does not meet the Teams requirements:');
 
             foreach ($violations as $violation) {
                 $this->line('    '.$violation);
