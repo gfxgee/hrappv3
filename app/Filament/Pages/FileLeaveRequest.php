@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enum\AttendanceStatus;
 use App\Enum\LeaveType;
+use App\Filament\Concerns\HasTeamsView;
 use App\Filament\Support\EnhanceReason;
 use App\Filament\Support\TimeSelect;
 use App\Models\LeaveRequest;
@@ -34,9 +35,15 @@ use Illuminate\Database\Eloquent\Model;
  */
 class FileLeaveRequest extends Page implements HasTable
 {
+    use HasTeamsView;
     use InteractsWithTable;
 
     protected string $view = 'filament.pages.file-leave-request';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.file-leave-request';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDateRange;
 

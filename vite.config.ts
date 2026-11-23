@@ -12,9 +12,12 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/css/filament/admin/theme.css',
+                'resources/css/filament/teams/theme.css',
                 'resources/js/app.tsx',
+                'resources/js/filament-select-scroll.ts',
                 'resources/js/org-chart.js',
                 'resources/js/teams.ts',
+                'resources/js/teams-motion.ts',
                 'resources/js/teams-popup.ts',
             ],
             // refresh: true,

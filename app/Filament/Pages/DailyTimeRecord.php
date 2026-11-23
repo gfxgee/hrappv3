@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\HasTeamsView;
 use App\Models\User;
 use App\Services\DtrService;
 use BackedEnum;
@@ -12,7 +13,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DailyTimeRecord extends Page
 {
+    use HasTeamsView;
+
     protected string $view = 'filament.pages.daily-time-record';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.daily-time-record';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 

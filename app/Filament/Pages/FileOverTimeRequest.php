@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enum\AttendanceStatus;
+use App\Filament\Concerns\HasTeamsView;
 use App\Filament\Support\EnhanceReason;
 use App\Models\OverTimeRequest;
 use App\Settings\GeneralSettings;
@@ -28,9 +29,15 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class FileOverTimeRequest extends Page implements HasTable
 {
+    use HasTeamsView;
     use InteractsWithTable;
 
     protected string $view = 'filament.pages.file-over-time-request';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.file-over-time-request';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
 

@@ -23,16 +23,14 @@
         <button
             type="button"
             x-on:click="open = ! open; if (open) $nextTick(() => $refs.gifSearch?.focus())"
-            @class([
-                'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-semibold transition',
-                'border-primary-500 text-primary-600 dark:text-primary-400' => false,
-                'border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-white/20 dark:text-gray-300 dark:hover:bg-white/5',
-            ])
+            {{-- The Teams composer passes its own, so the trigger matches the
+                 buttons either side of it. --}}
+            class="{{ $triggerClass ?? 'inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 dark:border-white/20 dark:text-gray-300 dark:hover:bg-white/5' }}"
         >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4">
                 <path fill-rule="evenodd" d="M3.75 4.5A2.25 2.25 0 0 0 1.5 6.75v10.5A2.25 2.25 0 0 0 3.75 19.5h16.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H3.75ZM7.5 9.75a2.25 2.25 0 1 0 0 4.5c.97 0 1.5-.5 1.5-.5v-1.5H7.875a.375.375 0 0 1 0-.75H10.5v2.69s-.9 1.06-3 1.06a3.75 3.75 0 1 1 2.33-6.69.375.375 0 1 1-.466.588A3 3 0 0 0 7.5 9.75Zm5.25-.375a.375.375 0 0 0-.75 0v5.25a.375.375 0 0 0 .75 0V9.375Zm2.25-.375a.375.375 0 0 0-.375.375v5.25a.375.375 0 0 0 .75 0v-2.25h1.875a.375.375 0 0 0 0-.75H15.375v-1.5h2.25a.375.375 0 0 0 0-.75H15Z" clip-rule="evenodd" />
             </svg>
-            GIF
+            {{ $triggerLabel ?? 'GIF' }}
         </button>
 
         <div

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\HasTeamsView;
 use App\Filament\Support\EnhanceReason;
 use App\Models\Badge;
 use App\Models\Praise;
@@ -26,7 +27,14 @@ use Throwable;
 
 class PraiseWall extends Page
 {
+    use HasTeamsView;
+
     protected string $view = 'filament.pages.praise-wall';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.praise-wall';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHeart;
 
@@ -125,13 +133,24 @@ class PraiseWall extends Page
         return (string) $count;
     }
 
-    public function getSubheading(): ?string
+    /**
+     * Which cycle the wall is showing.
+     */
+    public function cycleLabel(): string
     {
         $current = PraiseSession::current();
 
         return $current !== null
             ? "Current cycle: {$current->name}"
             : 'Everyday recognition';
+    }
+
+    public function getSubheading(): ?string
+    {
+        // The Teams band carries it, so Filament's header stands down — and
+        // with no heading, no subheading and no actions, the header block is
+        // skipped entirely.
+        return $this->inTeamsTab() ? null : $this->cycleLabel();
     }
 
     public function canManageCycles(): bool
@@ -144,6 +163,11 @@ class PraiseWall extends Page
      */
     protected function getHeaderActions(): array
     {
+        // In the tab these are rendered inside the band instead.
+        if ($this->inTeamsTab()) {
+            return [];
+        }
+
         return [
             $this->giveAction(),
             $this->finishCycleAction(),
@@ -670,18 +694,26 @@ class PraiseWall extends Page
      */
     public function viewPraiseAction(): Action
     {
-        return Action::make('viewPraise')
+        $inTab = $this->inTeamsTab();
+
+        $action = Action::make('viewPraise')
             ->modalHeading('🎉 Praise')
-            ->modalContent(fn (array $arguments) => view('filament.praise.detail', [
-                'praise' => $this->loadPraise((int) $arguments['praise']),
-            ]))
+            ->modalContent(fn (array $arguments) => view(
+                $inTab ? 'filament.praise.teams-detail' : 'filament.praise.detail',
+                ['praise' => $this->loadPraise((int) $arguments['praise'])],
+            ))
             ->modalWidth('lg')
             ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Close')
             // Reset the composer and rain confetti every time the modal opens.
             ->mountUsing(function (): void {
                 $this->resetComposer();
                 $this->dispatch('praise-opened');
             });
+
+        // In the tab the × in the corner is the only way out, as in the
+        // design; a footer with one Close button in it is a wasted row.
+        return $inTab
+            ? $action->modalCancelAction(false)
+            : $action->modalCancelActionLabel('Close');
     }
 }

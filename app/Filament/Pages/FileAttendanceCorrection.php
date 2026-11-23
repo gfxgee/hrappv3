@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enum\AttendanceCorrectionType;
 use App\Enum\AttendanceStatus;
+use App\Filament\Concerns\HasTeamsView;
 use App\Models\AttendanceCorrectionRequest;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -28,9 +29,15 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class FileAttendanceCorrection extends Page implements HasTable
 {
+    use HasTeamsView;
     use InteractsWithTable;
 
     protected string $view = 'filament.pages.file-attendance-correction';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.file-attendance-correction';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPencilSquare;
 

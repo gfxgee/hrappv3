@@ -124,6 +124,10 @@ class AdminPanelProvider extends PanelProvider
                 fn (): View => view('components.google-analytics'),
             )
             ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): View => view('filament.shared.select-scroll'),
+            )
+            ->renderHook(
                 PanelsRenderHook::PAGE_START,
                 fn (): View => view('filament.announcements.banners'),
             )

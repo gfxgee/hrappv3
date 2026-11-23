@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\HasTeamsView;
 use App\Models\User;
 use App\Services\CelebrationService;
 use App\Services\OnCallService;
@@ -18,7 +19,14 @@ use Filament\Support\Icons\Heroicon;
  */
 class Dashboard extends BaseDashboard
 {
+    use HasTeamsView;
+
     protected string $view = 'filament.pages.dashboard';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.dashboard';
+    }
 
     public function mount(): void
     {
@@ -69,11 +77,12 @@ class Dashboard extends BaseDashboard
 
     /**
      * Keep the visible page heading as a plain "Dashboard" (the personalized
-     * greeting already lives in the page header).
+     * greeting already lives in the page header), and drop it entirely in the
+     * Teams tab, where the greeting band carries it.
      */
     public function getHeading(): string
     {
-        return 'Dashboard';
+        return $this->inTeamsTab() ? '' : 'Dashboard';
     }
 
     /**

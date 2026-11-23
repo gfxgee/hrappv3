@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\HasTeamsView;
 use App\Models\Suggestion;
 use BackedEnum;
 use Filament\Forms\Components\Select;
@@ -21,7 +22,14 @@ use UnitEnum;
  */
 class SuggestionBox extends Page
 {
+    use HasTeamsView;
+
     protected string $view = 'filament.pages.suggestion-box';
+
+    protected function teamsView(): string
+    {
+        return 'filament.pages.teams.suggestion-box';
+    }
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInbox;
 

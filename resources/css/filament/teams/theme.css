@@ -1,0 +1,422 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@import '../../brand-palette.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+/* The tab's own Blade components (the band, the next-steps card) live here. */
+@source '../../../../resources/views/components/**/*';
+
+/* Shared with the admin theme — see resources/css/announcement-prose.css. */
+@import '../../announcement-prose.css';
+
+/*
+| The Microsoft Teams tab's own skin.
+|
+| A separate file from the admin theme rather than a set of overrides on it.
+| The two surfaces are free to diverge, the tab can be restyled without any
+| risk to the place HR does its day's work, and when we decide to bring this
+| look to /admin as well it is one line in AdminPanelProvider rather than an
+| unpicking job.
+|
+| Everything below is written against the tokens, never a literal colour, so
+| the dark block is the only place the second palette lives.
+*/
+
+:root {
+    /* The design's own tokens, named for their job rather than their hue, so
+       the widgets below read as intent and a retint is one edit here. */
+    --hr-ground: #efede5;
+    --hr-ground-soft: #f7f6f2;
+    --hr-card: #ffffff;
+    --hr-band: #1f1342;
+    --hr-ink: #1f1342;
+    --hr-ink-soft: #585858;
+    --hr-accent: #f99f29;
+    --hr-accent-ink: #441004;
+    --hr-radius: 24px;
+    --hr-radius-sm: 20px;
+    --hr-lift: 0 12px 28px -18px rgb(31 19 66 / 0.3);
+    --hr-hairline: rgb(31 19 66 / 0.14);
+    --hr-field-line: #e3e3e3;
+    --hr-selected: #1f1342;
+}
+
+/*
+| Dark.
+|
+| Teams carries its own theme and a lot of people run it dark, so the tab has
+| to be designed for dark rather than fall back to stock Filament chrome. The
+| ground keeps the brand's purple cast instead of going neutral black, which
+| is what stops it reading as a generic admin panel with the lights off.
+*/
+.dark {
+    --hr-ground: #14101d;
+    --hr-ground-soft: #1b1628;
+    --hr-card: #1d1830;
+    --hr-band: #0f0924;
+    --hr-ink: #f5f3ff;
+    --hr-ink-soft: #a9a2c0;
+    --hr-accent: #f9a93f;
+    --hr-accent-ink: #ffd9a8;
+    --hr-lift: 0 12px 28px -18px rgb(0 0 0 / 0.75);
+    --hr-hairline: rgb(255 255 255 / 0.1);
+    --hr-field-line: rgb(255 255 255 / 0.14);
+    --hr-selected: #592bd7;
+}
+
+/*
+| Chrome: a deep purple band across the top, content floating on the ground.
+*/
+
+.fi-body {
+    background-color: var(--hr-ground);
+}
+
+/* `.fi-topbar` is itself the <nav>, so it takes the band directly. */
+.fi-topbar {
+    background-color: var(--hr-band);
+    border-color: color-mix(in srgb, white 8%, transparent);
+    box-shadow: none;
+}
+
+/* The brand mark is `text-gray-950` by default — near-black on the band. */
+.fi-topbar .fi-logo {
+    color: white;
+}
+
+.fi-topbar .fi-topbar-item-label,
+.fi-topbar .fi-topbar-item-btn,
+.fi-topbar .fi-icon-btn {
+    color: color-mix(in srgb, white 78%, transparent);
+}
+
+/* Icons default to `text-gray-400`, which reads as switched-off on purple. */
+.fi-topbar .fi-topbar-item-btn > .fi-icon {
+    color: color-mix(in srgb, white 70%, transparent);
+}
+
+.fi-topbar .fi-topbar-item-btn:hover,
+.fi-topbar .fi-icon-btn:hover {
+    color: white;
+    background-color: color-mix(in srgb, white 9%, transparent);
+}
+
+/*
+| The current page.
+|
+| Filament's own active state is a near-white pill with primary-600 text,
+| which is built for a white topbar: on the band it turns into white text on
+| a white pill. Inverted here — the pill is a lift out of the band itself, so
+| it stays part of the chrome instead of sitting on top of it.
+|
+| `fi-active` sits on the item, so the button is a descendant.
+*/
+.fi-topbar .fi-topbar-item.fi-active .fi-topbar-item-btn {
+    color: white;
+    background-color: color-mix(in srgb, white 16%, transparent);
+}
+
+.fi-topbar .fi-topbar-item.fi-active .fi-topbar-item-btn > .fi-icon {
+    color: white;
+}
+
+.fi-topbar .fi-topbar-item.fi-active .fi-topbar-item-label {
+    color: white;
+    font-weight: 700;
+}
+
+/*
+| Cards: softer corners and a diffuse shadow in place of Filament's hairline
+| ring, which is what makes the tab read as its own product rather than an
+| admin panel someone embedded.
+*/
+
+.fi-main .fi-section {
+    background-color: var(--hr-card);
+    border-radius: var(--hr-radius);
+    box-shadow: var(--hr-lift);
+    --tw-ring-color: transparent;
+}
+
+.fi-section-header-heading {
+    letter-spacing: -0.2px;
+}
+
+/*
+| The greeting band runs edge to edge.
+|
+| It is drawn inside Filament's padded page container, so it has to cancel
+| that padding exactly rather than approximately — 8px of ground showing down
+| each side is the difference between a band and a wide card.
+|
+| The values mirror Filament's own: `.fi-main` is `px-4 md:px-6 lg:px-8` and
+| `.fi-page-header-main-ctn` is `py-8` (vendor/filament/filament/resources/
+| css/components/layout.css and page.css). If those change, this follows.
+*/
+
+.hr-bleed {
+    margin-inline: -1rem;
+    margin-top: -2rem;
+}
+
+@media (min-width: 48rem) {
+    .hr-bleed {
+        margin-inline: -1.5rem;
+    }
+}
+
+@media (min-width: 64rem) {
+    .hr-bleed {
+        margin-inline: -2rem;
+    }
+}
+
+/*
+| A card on the ground. The announcement strip and anything else drawn in a
+| blade rather than by Filament uses this, so one edit retints them all.
+*/
+
+.hr-card {
+    background-color: var(--hr-card);
+    border-radius: var(--hr-radius-sm);
+    box-shadow: var(--hr-lift);
+}
+
+/*
+| Modals.
+|
+| An opened praise is the one place the tab shows a dialog, and it should
+| read as a card lifted off the wall rather than a system box: the same
+| corner radius as the cards it came from, and a close control that matches
+| the quiet buttons elsewhere.
+*/
+
+.fi-modal-window {
+    border-radius: 26px;
+    background-color: var(--hr-card);
+}
+
+.fi-modal-header {
+    border-bottom: 1px solid var(--hr-ground);
+}
+
+.fi-modal-heading {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
+
+.fi-modal-close-btn {
+    border-radius: 11px;
+    background-color: var(--hr-ground-soft);
+}
+
+.fi-modal-close-btn:hover {
+    background-color: var(--hr-ground);
+}
+
+/*
+| Forms.
+|
+| Filament's inputs are white boxes with a hairline ring, which disappear on
+| a white card. The design fills them instead, so a field reads as somewhere
+| to type before you click it. Scoped to `.fi-main` so panels' own popovers
+| and modals keep Filament's chrome.
+*/
+
+.fi-main .fi-input-wrp {
+    border-radius: 14px;
+    background-color: var(--hr-ground-soft);
+    box-shadow: none;
+    --tw-ring-color: var(--hr-field-line);
+}
+
+.fi-main .fi-fo-field-label-content {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--hr-ink-soft);
+}
+
+/*
+| Filament actions rendered inside the band.
+|
+| They arrive with Filament's own button colours, which assume a white page.
+| On the band the primary one becomes the page's single accent action and
+| everything else is a quiet lift out of the purple.
+*/
+
+.hr-bleed .fi-btn {
+    border-radius: 14px;
+    background-color: color-mix(in srgb, white 12%, transparent);
+    color: #ffffff;
+    box-shadow: none;
+    --tw-ring-color: transparent;
+}
+
+.hr-bleed .fi-btn:hover {
+    background-color: color-mix(in srgb, white 18%, transparent);
+}
+
+.hr-bleed .fi-btn .fi-btn-label,
+.hr-bleed .fi-btn .fi-icon {
+    color: #ffffff;
+}
+
+.hr-bleed .fi-btn.fi-color-primary {
+    background-color: var(--hr-accent);
+}
+
+.hr-bleed .fi-btn.fi-color-primary:hover {
+    background-color: var(--hr-accent);
+    filter: brightness(1.06);
+}
+
+.hr-bleed .fi-btn.fi-color-primary,
+.hr-bleed .fi-btn.fi-color-primary .fi-btn-label,
+.hr-bleed .fi-btn.fi-color-primary .fi-icon {
+    color: var(--hr-accent-ink);
+}
+
+/* Plain inputs the design draws itself, matched to the Filament ones above. */
+.hr-field {
+    width: 100%;
+    box-sizing: border-box;
+    height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 13px;
+    background-color: var(--hr-ground-soft);
+    box-shadow: inset 0 0 0 1.5px var(--hr-field-line);
+    color: var(--hr-ink);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.hr-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--hr-ink-soft);
+}
+
+/*
+| Buttons the design draws itself.
+|
+| `.hr-cta` is the one action a page exists for — filing the request. There
+| is deliberately only ever one of them on a screen.
+*/
+
+.hr-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 46px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 16px;
+    background-color: var(--hr-accent);
+    color: var(--hr-accent-ink);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        filter 0.18s ease,
+        transform 0.1s ease;
+}
+
+.hr-cta:hover {
+    filter: brightness(1.06);
+}
+
+.hr-cta:active {
+    transform: translateY(1px);
+}
+
+.hr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 13px;
+    background-color: var(--hr-card);
+    color: var(--hr-ink);
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1.5px var(--hr-field-line);
+    transition:
+        background-color 0.18s ease,
+        transform 0.1s ease;
+}
+
+.hr-btn:hover {
+    background-color: var(--hr-ground-soft);
+}
+
+.hr-btn:active {
+    transform: translateY(1px);
+}
+
+/* The same control, filled: the period that is currently showing. */
+.hr-btn-on {
+    background-color: var(--hr-selected);
+    color: #ffffff;
+    box-shadow: none;
+}
+
+.hr-btn-on:hover {
+    background-color: var(--hr-selected);
+    filter: brightness(1.25);
+}
+
+/*
+| Motion.
+|
+| One un-prompted moment per page — the figures counting up on arrival, driven
+| by resources/js/teams-motion.ts — and everything else answers a hover, focus
+| or press. No entrance animation on sections: this is a page people open many
+| times a week, and choreography they have to sit through each time stops
+| being delightful by about the third visit.
+*/
+
+.fi-topbar-item-btn {
+    transition:
+        color 0.18s ease,
+        background-color 0.18s ease;
+}
+
+.hr-tile {
+    transition:
+        transform 0.1s ease,
+        background-color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.hr-tile:hover {
+    background-color: var(--hr-ground);
+    box-shadow: inset 0 0 0 1px var(--hr-hairline);
+}
+
+.hr-tile:active {
+    transform: translateY(1px);
+}
+
+/*
+| Windows' "Show animations in Windows" switch reaches the embedded tab as
+| this query, so honouring it is how the tab honours the operating system.
+| teams-motion.ts checks the same query before it starts.
+*/
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

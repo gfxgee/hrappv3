@@ -56,15 +56,18 @@ class TeamsPanelProvider extends PanelProvider
         return $panel
             ->id('teams-app')
             ->path('teams-app')
-            ->viteTheme('resources/css/filament/admin/theme.css')
+            // The tab's own theme, not the admin one. Keeps the two surfaces
+            // free to diverge, and makes bringing this look to /admin a
+            // one-line change there rather than an unpicking job here.
+            ->viteTheme('resources/css/filament/teams/theme.css')
             ->topNavigation()
             ->profile(EditProfile::class, isSimple: false)
             ->databaseNotifications()
             ->databaseNotificationsPolling('30s')
             ->maxContentWidth(Width::Full)
-            ->font('Inter')
+            ->font('Instrument Sans')
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#592bd7'),
                 'verified' => Color::hex('#1e1242'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -126,9 +129,22 @@ class TeamsPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): View => view('components.google-analytics'),
             )
+            // Counts the dashboard figures up on arrival. Loaded for this
+            // panel only, so /admin keeps its current, motionless chrome.
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): View => view('filament.teams.motion'),
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): View => view('filament.shared.select-scroll'),
+            )
+            // The tab's own drawing of the same announcements: a one-line
+            // notice that opens on a click, so a long one does not push the
+            // dashboard below the fold. /admin keeps the full banner.
             ->renderHook(
                 PanelsRenderHook::PAGE_START,
-                fn (): View => view('filament.announcements.banners'),
+                fn (): View => view('filament.announcements.teams-banners'),
             )
             ->spa(hasPrefetching: true)
             // See AdminPanelProvider: the Org Chart's charting library does not
