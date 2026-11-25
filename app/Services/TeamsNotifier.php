@@ -129,6 +129,7 @@ class TeamsNotifier
             'department' => $user->department?->name,
             'start_date' => $weekStart->toDateString(),
             'end_date' => $weekEnd->toDateString(),
+            'approver' => $this->approverEmail($user),
             'text' => sprintf('📞 %s is on-call this week (%s).', $user->name, $range),
         ]);
     }
@@ -149,6 +150,7 @@ class TeamsNotifier
             'department' => $standIn->department?->name,
             'covering_for' => $primary?->name,
             'request_date' => $date->toDateString(),
+            'approver' => $this->approverEmail($standIn),
             'text' => sprintf(
                 '📞 %s is covering on-call today%s.',
                 $standIn->name,
@@ -175,6 +177,7 @@ class TeamsNotifier
             'photo' => $employee->getFilamentAvatarUrl(),
             'department' => $employee->department?->name,
             'request_date' => today()->toDateString(),
+            'approver' => $this->approverEmail($employee),
             'text' => sprintf(
                 '🤒 %s has checked in as sick today and is offline.',
                 $employee->displayName(),
