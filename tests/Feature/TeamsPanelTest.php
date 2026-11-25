@@ -3,11 +3,13 @@
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\LeaveCalendar;
 use App\Http\Middleware\TeamsEmbed;
+use App\Models\Department;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Role;
 
@@ -83,10 +85,23 @@ it('navigates to the employee self-service pages', function () {
         ->toContain('Suggestion Box');
 });
 
-it('keeps the browsing pages out of the bar', function () {
-    // The Org Chart and the Leave Calendar are things you go and look at, not
-    // things you do in the half-minute someone spends in the tab. Both are
-    // still registered and reachable by URL.
+/**
+ * @return Collection<int, NavigationGroup>
+ */
+function labelledTeamsGroups(): Collection
+{
+    Filament::setCurrentPanel('teams-app');
+
+    return collect(Filament::getNavigation())
+        ->filter(fn (NavigationGroup $group): bool => filled($group->getLabel()))
+        ->values();
+}
+
+it('keeps the Org Chart out of the bar, and puts the Leave Calendar behind the role', function () {
+    // The Org Chart is something you go and look at rather than do, so it
+    // stays out of the bar for everyone — still registered, still reachable
+    // by URL. The Leave Calendar is gated to managers and team leaders, so
+    // it belongs with the rest of the role-gated pages.
     $hr = User::factory()->create(['status' => 'active']);
     $hr->assignRole(Role::findOrCreate('hr'));
 
@@ -94,10 +109,8 @@ it('keeps the browsing pages out of the bar', function () {
 
     expect(teamsPanelNavigationLabels())
         ->not->toContain('Org Chart')
-        // The HR role clears the Leave Calendar's own access check, so its
-        // absence here is this panel's doing rather than a permission.
         ->and(LeaveCalendar::canAccess())->toBeTrue()
-        ->and(teamsPanelNavigationLabels())->not->toContain('Leave Calendar');
+        ->and(teamsPanelNavigationLabels())->toContain('Leave Calendar');
 });
 
 it('keeps administration out of the tab navigation', function () {
@@ -115,14 +128,33 @@ it('keeps administration out of the tab navigation', function () {
         ->not->toContain('Import Attendance');
 });
 
-it('puts every item straight in the bar, with nothing behind a dropdown', function () {
+it('gives an employee with no role a flat bar and no dropdown', function () {
     $this->actingAs(User::factory()->create(['status' => 'active']));
     Filament::setCurrentPanel('teams-app');
 
-    $labelled = collect(Filament::getNavigation())
-        ->filter(fn (NavigationGroup $group): bool => filled($group->getLabel()));
+    expect(labelledTeamsGroups())->toBeEmpty();
+});
 
-    expect($labelled)->toBeEmpty();
+it('gives someone with a role exactly one dropdown, holding what they can open', function () {
+    // One extra item in a bar that already wraps to two rows — not twelve.
+    $hr = User::factory()->create(['status' => 'active']);
+    $hr->assignRole(Role::findOrCreate('hr'));
+
+    $this->actingAs($hr->fresh());
+    Filament::setCurrentPanel('teams-app');
+
+    $groups = labelledTeamsGroups();
+
+    expect($groups)->toHaveCount(1)
+        ->and($groups->first()->getLabel())->toBe('Management');
+
+    $inside = collect($groups->first()->getItems())
+        ->map(fn ($item): string => (string) $item->getLabel());
+
+    expect($inside)->toContain('Leave Requests')
+        ->and($inside)->toContain('Overtime Requests')
+        // Super-admin only, so an HR user must not see it.
+        ->and($inside)->not->toContain('Roles');
 });
 
 it('registers resources so dashboard links still resolve', function () {
@@ -232,4 +264,57 @@ it('leaves an admin-only page where it is when the tab has no counterpart', func
     // The backup manager is registered on /admin only. Redirecting it would
     // turn a working page into a 404.
     expect(Route::has('filament.teams-app.pages.backups'))->toBeFalse();
+});
+
+it('shows each role only what that role can open', function () {
+    // The per-item gate is each class's own canAccess(), so the dropdown
+    // narrows and widens with the role rather than being a second list that
+    // has to be kept in step by hand.
+    //
+    // Note what makes an approver: isTeamLeader() means *leads a department*,
+    // not "holds the teamleader role". The role on its own opens nothing.
+    $department = Department::factory()->create();
+
+    $leader = User::factory()->create(['status' => 'active']);
+    $leader->assignRole(Role::findOrCreate('teamleader'));
+    $department->leaders()->syncWithoutDetaching([$leader->id]);
+
+    $labels = function (): Collection {
+        return labelledTeamsGroups()
+            ->flatMap(fn (NavigationGroup $group): array => $group->getItems())
+            ->map(fn ($item): string => (string) $item->getLabel())
+            ->values();
+    };
+
+    $this->actingAs($leader->fresh());
+    $leaderSees = $labels();
+
+    $admin = User::factory()->create(['status' => 'active']);
+    $admin->assignRole(Role::findOrCreate('super_admin'));
+
+    $this->actingAs($admin->fresh());
+    $adminSees = $labels();
+
+    // Approvals reach a department leader; access control does not.
+    expect($leaderSees)->toContain('Leave Requests')
+        ->and($leaderSees)->not->toContain('Roles')
+        ->and($adminSees)->toContain('Roles');
+});
+
+it('does not put two different "Suggestion Box" items in the same bar', function () {
+    // The employee page is your own submission form; the resource is HR's
+    // table of everyone's. Two sidebar groups apart in /admin, an inch apart
+    // here, and identically named until now.
+    $hr = User::factory()->create(['status' => 'active']);
+    $hr->assignRole(Role::findOrCreate('hr'));
+
+    $this->actingAs($hr->fresh());
+
+    $inDropdown = labelledTeamsGroups()
+        ->flatMap(fn (NavigationGroup $group): array => $group->getItems())
+        ->map(fn ($item): string => (string) $item->getLabel());
+
+    expect(teamsPanelNavigationLabels())->toContain('Suggestion Box')
+        ->and($inDropdown)->toContain('All Suggestions')
+        ->and($inDropdown)->not->toContain('Suggestion Box');
 });
