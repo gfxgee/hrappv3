@@ -110,10 +110,13 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
                 RedirectMobileToApp::class,
-                // A link into /admin followed from inside a Teams tab lands in
-                // the Teams panel instead, so nobody ends up with the full
-                // admin chrome — logout included — inside the iframe.
-                KeepTeamsTabInItsPanel::class,
+                // Off while the tab opens /admin: this rewrites any /admin
+                // route followed inside a Teams tab into its /teams-app
+                // equivalent, which would bounce the tab straight back into
+                // the panel it is meant to be staying out of. Re-register it
+                // in the same move that points TeamsSsoController back at
+                // /teams-app.
+                // KeepTeamsTabInItsPanel::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

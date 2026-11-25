@@ -142,14 +142,17 @@ class TeamsSsoController
 
     /**
      * Phones get the mobile app, the same split the rest of the app uses.
-     * Desktop gets the Teams panel rather than /admin: same pages, but chrome
-     * that suits a tab — top navigation, employee pages only, and no way to
-     * sign out and strand yourself inside the iframe.
+     *
+     * Desktop lands on /admin. The Teams panel at /teams-app is built and
+     * reachable, but it is not what the tab opens yet: the redesign behind it
+     * has not been signed off, and the tab is what everyone sees. Point this
+     * back at /teams-app — and re-register KeepTeamsTabInItsPanel on the
+     * admin panel — to turn it on.
      */
     private function destinationFor(Request $request): string
     {
         return MobileAudience::isMobile($request)
             ? route('mobile.home')
-            : url('/teams-app');
+            : url('/admin');
     }
 }

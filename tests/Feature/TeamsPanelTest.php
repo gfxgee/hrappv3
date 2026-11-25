@@ -201,28 +201,25 @@ it('renders a menu bar instead of a second sidebar', function () {
         ->assertSee('fi-body-has-top-navigation', escape: false);
 });
 
-it('pulls an /admin link followed inside the tab into the Teams panel', function () {
-    // Stored notifications, pasted bookmarks and the dashboard route all
-    // point at /admin. Following one must not load the full admin chrome,
-    // logout button and all, inside the iframe.
+it('leaves an /admin link alone inside the tab, because /admin is what the tab opens', function () {
+    // KeepTeamsTabInItsPanel is unregistered while the tab lands on /admin:
+    // rewriting these would bounce the tab into the panel it is staying out
+    // of. Re-register it in the same move that points the tab back at
+    // /teams-app, and this test flips back to asserting the redirect.
     $this->actingAs(User::factory()->create(['status' => 'active']));
 
     $this->withCookie(TeamsEmbed::MARKER, '1')
         ->withoutVite()
         ->get('/admin/daily-time-record')
-        ->assertRedirect(route('filament.teams-app.pages.daily-time-record'));
+        ->assertOk();
 });
 
-it('carries the record and query string across', function () {
-    $this->actingAs(User::factory()->create(['status' => 'active']));
-
-    $this->withCookie(TeamsEmbed::MARKER, '1')
-        ->withoutVite()
-        ->get('/admin/leave-requests/7/edit?activeTab=all')
-        ->assertRedirect(route('filament.teams-app.resources.leave-requests.edit', [
-            'record' => 7,
-            'activeTab' => 'all',
-        ]));
+it('keeps the admin panel registered on /admin for the tab to land on', function () {
+    // The Teams panel is still built and reachable at /teams-app; it is just
+    // not where the tab goes. Both panels answering is what makes the switch
+    // a one-line change rather than a redeploy of the design.
+    expect(Route::has('filament.admin.pages.daily-time-record'))->toBeTrue()
+        ->and(Route::has('filament.teams-app.pages.daily-time-record'))->toBeTrue();
 });
 
 it('leaves an ordinary browser visit to /admin alone', function () {

@@ -34,7 +34,7 @@ it('signs in an active employee from their Teams identity', function () {
 
     $this->postJson(route('teams.auth.token'), ['token' => 'a-teams-token'])
         ->assertOk()
-        ->assertJson(['redirect' => url('/teams-app')]);
+        ->assertJson(['redirect' => url('/admin')]);
 
     $this->assertAuthenticatedAs($user);
 });
@@ -99,7 +99,7 @@ it('redeems a popup code for a session', function () {
     $this->withSession([TeamsSsoController::NONCE_KEY => 'the-nonce'])
         ->postJson(route('teams.auth.claim'), ['code' => $code])
         ->assertOk()
-        ->assertJson(['redirect' => url('/teams-app')]);
+        ->assertJson(['redirect' => url('/admin')]);
 
     $this->assertAuthenticatedAs($user);
 });
